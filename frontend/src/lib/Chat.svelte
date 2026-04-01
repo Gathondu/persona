@@ -110,13 +110,13 @@
 <div class={styles.shell}>
   <header class={styles.header}>
     <span class={styles.logo}>&#9670;</span>
-    <h1 class={styles.title}>Denis Ngugi Gathondu Chatbot</h1>
+    <h1 class={styles.title}>Denis Ngugi Gathondu's Chatbot</h1>
   </header>
 
   <div class={styles.thread} bind:this={threadEl}>
     {#if messages.length === 0}
       <div class={styles.empty}>
-        <p>Start a conversation.</p>
+        <p>Start a conversation with Denis.</p>
       </div>
     {/if}
     {#each messages as msg}
