@@ -132,12 +132,79 @@
   color: var(--accent);
 }
 
-.text {
-  margin: 0;
+.markdown {
   font-size: 15px;
   color: var(--text);
-  white-space: pre-wrap;
   word-break: break-word;
+}
+
+.markdown :global(p) {
+  margin: 0 0 0.6rem;
+}
+
+.markdown :global(p:last-child) {
+  margin-bottom: 0;
+}
+
+.markdown :global(h1),
+.markdown :global(h2),
+.markdown :global(h3),
+.markdown :global(h4) {
+  margin: 0.8rem 0 0.5rem;
+  line-height: 1.3;
+}
+
+.markdown :global(ul),
+.markdown :global(ol) {
+  margin: 0.4rem 0 0.7rem 1.25rem;
+  padding: 0;
+}
+
+.markdown :global(li) {
+  margin: 0.2rem 0;
+}
+
+.markdown :global(pre) {
+  margin: 0.7rem 0;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: #0e1220;
+  overflow-x: auto;
+}
+
+.markdown :global(code) {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+.markdown :global(:not(pre) > code) {
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(124, 106, 247, 0.2);
+}
+
+.markdown :global(blockquote) {
+  margin: 0.7rem 0;
+  padding: 0.1rem 0 0.1rem 0.8rem;
+  border-left: 3px solid var(--accent-dim);
+  color: #c8d0ea;
+}
+
+.markdown :global(a) {
+  color: #a89cff;
+  text-decoration: underline;
+}
+
+.markdown :global(hr) {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0.8rem 0;
+}
+
+.cursor {
+  margin-left: 1px;
+  opacity: 0.85;
 }
 
 /* ─── Input bar ──────────────────────────────────────────── */

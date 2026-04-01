@@ -1,5 +1,5 @@
 ---
-title: My AI Double
+title: DNG
 emoji: 🤖
 colorFrom: indigo
 colorTo: purple
@@ -8,7 +8,7 @@ app_port: 7860
 pinned: false
 ---
 
-# My AI Double
+# Persona
 
 A full-stack LLM agent that responds in your voice with your expertise.  
 **Backend:** FastAPI + SQLite (persistent chat history) + OpenRouter  

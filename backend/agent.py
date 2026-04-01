@@ -16,7 +16,7 @@ _client = AsyncOpenAI(
     base_url="https://openrouter.ai/api/v1",
     default_headers={
         "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
-        "X-Title": "My AI Double",
+        "X-Title": "DNG",
     },
 )
 
