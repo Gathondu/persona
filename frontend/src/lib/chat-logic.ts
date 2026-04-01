@@ -1,10 +1,20 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
 
+export const MAX_CHATS = 3;
+const CHAT_INDEX_KEY = "dng_chat_index_v1";
+const ACTIVE_CHAT_KEY = "dng_active_chat_v1";
+
 export interface Message {
   role: "user" | "assistant";
   content: string;
   streaming?: boolean;
+}
+
+export interface ChatMeta {
+  sessionId: string;
+  title: string;
+  updatedAt: number;
 }
 
 interface StreamPayload {
@@ -16,22 +26,26 @@ interface SendMessageArgs {
   input: string;
   isStreaming: boolean;
   sessionId: string;
+  knownSessionIds: string[];
   messages: Message[];
   setInput: (value: string) => void;
   setIsStreaming: (value: boolean) => void;
   threadEl: HTMLElement | null;
   onAssistantComplete?: () => void | Promise<void>;
+  onUserMessage?: (message: string) => void;
 }
 
 interface SubmitMessageBindings {
   getInput: () => string;
   getIsStreaming: () => boolean;
+  getSessionId: () => string;
+  getKnownSessionIds: () => string[];
   getMessages: () => Message[];
   getThreadEl: () => HTMLElement | null;
   setInput: (value: string) => void;
   setIsStreaming: (value: boolean) => void;
-  sessionId: string;
   onAssistantComplete?: () => void | Promise<void>;
+  onUserMessage?: (message: string) => void;
 }
 
 marked.setOptions({
@@ -58,6 +72,9 @@ export async function sendMessage(args: SendMessageArgs): Promise<void> {
 
   args.setInput("");
   args.setIsStreaming(true);
+  if (args.onUserMessage) {
+    args.onUserMessage(text);
+  }
 
   args.messages.push({ role: "user", content: text });
   args.messages.push({ role: "assistant", content: "", streaming: true });
@@ -67,7 +84,11 @@ export async function sendMessage(args: SendMessageArgs): Promise<void> {
     const res = await fetch("/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ session_id: args.sessionId, message: text }),
+      body: JSON.stringify({
+        session_id: args.sessionId,
+        message: text,
+        known_session_ids: args.knownSessionIds,
+      }),
     });
 
     if (!res.ok || !res.body) {
@@ -124,12 +145,14 @@ export function createSubmitMessage(
     sendMessage({
       input: bindings.getInput(),
       isStreaming: bindings.getIsStreaming(),
-      sessionId: bindings.sessionId,
+      sessionId: bindings.getSessionId(),
+      knownSessionIds: bindings.getKnownSessionIds(),
       messages: bindings.getMessages(),
       setInput: bindings.setInput,
       setIsStreaming: bindings.setIsStreaming,
       threadEl: bindings.getThreadEl(),
       onAssistantComplete: bindings.onAssistantComplete,
+      onUserMessage: bindings.onUserMessage,
     });
 }
 
@@ -166,5 +189,136 @@ export function handleEnterToSend(
   if (event.key === "Enter" && !event.shiftKey) {
     event.preventDefault();
     void onSend();
+  }
+}
+
+function parseChatIndex(raw: string | null): ChatMeta[] {
+  if (!raw) {
+    return [];
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) {
+      return [];
+    }
+    const chats: ChatMeta[] = [];
+    for (const item of parsed) {
+      if (
+        typeof item === "object" &&
+        item !== null &&
+        "sessionId" in item &&
+        "title" in item &&
+        "updatedAt" in item &&
+        typeof item.sessionId === "string" &&
+        typeof item.title === "string" &&
+        typeof item.updatedAt === "number"
+      ) {
+        chats.push({
+          sessionId: item.sessionId,
+          title: item.title,
+          updatedAt: item.updatedAt,
+        });
+      }
+    }
+    chats.sort((a, b) => b.updatedAt - a.updatedAt);
+    return chats;
+  } catch {
+    return [];
+  }
+}
+
+export function loadChatIndex(): ChatMeta[] {
+  return parseChatIndex(localStorage.getItem(CHAT_INDEX_KEY));
+}
+
+export function saveChatIndex(chats: ChatMeta[]): void {
+  localStorage.setItem(CHAT_INDEX_KEY, JSON.stringify(chats));
+}
+
+export function getActiveSessionId(): string | null {
+  const active = localStorage.getItem(ACTIVE_CHAT_KEY);
+  if (!active || !active.trim()) {
+    return null;
+  }
+  return active;
+}
+
+export function setActiveSessionId(sessionId: string): void {
+  localStorage.setItem(ACTIVE_CHAT_KEY, sessionId);
+}
+
+export function createChat(
+  chats: ChatMeta[],
+  title = "New conversation",
+): { ok: true; chats: ChatMeta[]; created: ChatMeta } | { ok: false } {
+  if (chats.length >= MAX_CHATS) {
+    return { ok: false };
+  }
+  const created: ChatMeta = {
+    sessionId: crypto.randomUUID(),
+    title,
+    updatedAt: Date.now(),
+  };
+  const next = [created, ...chats].sort((a, b) => b.updatedAt - a.updatedAt);
+  return { ok: true, chats: next, created };
+}
+
+export function touchChat(chats: ChatMeta[], sessionId: string, latestText: string): ChatMeta[] {
+  const trimmed = latestText.trim();
+  return chats
+    .map((chat) => {
+      if (chat.sessionId !== sessionId) {
+        return chat;
+      }
+      const maybeTitle = chat.title === "New conversation" && trimmed
+        ? trimmed.slice(0, 42)
+        : chat.title;
+      return {
+        ...chat,
+        title: maybeTitle || "New conversation",
+        updatedAt: Date.now(),
+      };
+    })
+    .sort((a, b) => b.updatedAt - a.updatedAt);
+}
+
+export function removeChat(chats: ChatMeta[], sessionId: string): ChatMeta[] {
+  return chats.filter((chat) => chat.sessionId !== sessionId);
+}
+
+export function getKnownSessionIds(chats: ChatMeta[], activeSessionId: string): string[] {
+  return chats
+    .map((chat) => chat.sessionId)
+    .filter((id) => id !== activeSessionId);
+}
+
+export async function fetchHistory(sessionId: string): Promise<Message[]> {
+  try {
+    const response = await fetch(`/history/${sessionId}`);
+    if (!response.ok) {
+      return [];
+    }
+    const payload = (await response.json()) as Array<{ role?: string; content?: string }>;
+    const messages: Message[] = [];
+    for (const item of payload) {
+      if (item.role === "user" || item.role === "assistant") {
+        messages.push({
+          role: item.role,
+          content: typeof item.content === "string" ? item.content : "",
+        });
+      }
+    }
+    return messages;
+  } catch {
+    return [];
+  }
+}
+
+export async function deleteSessionOnServer(sessionId: string): Promise<boolean> {
+  try {
+    const response = await fetch(`/sessions/${sessionId}`, { method: "DELETE" });
+    return response.ok;
+  } catch {
+    return false;
   }
 }

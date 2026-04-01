@@ -27,6 +27,101 @@
   font-family: var(--font-sans);
 }
 
+.body {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+
+.sidebar {
+  width: 240px;
+  border-right: 1px solid var(--border);
+  background: var(--surface);
+  padding: 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.chatPane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.newChatBtn {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.newChatBtn:hover {
+  border-color: var(--accent-dim);
+}
+
+.chatList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.chatItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+}
+
+.chatItemActive {
+  border-color: var(--accent-dim);
+  background: rgba(124, 106, 247, 0.12);
+}
+
+.chatSwitchBtn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  padding: 8px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chatDeleteBtn {
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.chatDeleteBtn:hover {
+  color: #ff8f8f;
+  background: rgba(255, 143, 143, 0.1);
+}
+
+.limitNotice {
+  margin: 0;
+  color: #f2b777;
+  font-size: 12px;
+}
+
 /* ─── Header ─────────────────────────────────────────────── */
 .header {
   display: flex;

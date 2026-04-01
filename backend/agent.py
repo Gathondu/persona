@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import math
 import os
+import re
 from collections.abc import AsyncIterator
+from dataclasses import dataclass
 
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
@@ -20,8 +23,16 @@ _client = AsyncOpenAI(
     },
 )
 
-MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-3.5-sonnet")
+MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-5.4-nano")
 PLACEHOLDER_FALLBACK = "Share more context, goals, or questions..."
+EMBEDDING_SIZE = 128
+
+
+@dataclass(frozen=True)
+class ProfileMatch:
+    session_id: str
+    text: str
+    score: float
 
 
 async def stream_response(
@@ -76,3 +87,102 @@ async def generate_placeholder(
     if not text:
         return PLACEHOLDER_FALLBACK
     return text.replace("\n", " ")[:80]
+
+
+def embed_text(text: str) -> list[float]:
+    vector = [0.0] * EMBEDDING_SIZE
+    tokens = re.findall(r"[a-z0-9]+", text.lower())
+    if not tokens:
+        return vector
+    for token in tokens:
+        idx = hash(token) % EMBEDDING_SIZE
+        vector[idx] += 1.0
+    norm = math.sqrt(sum(v * v for v in vector))
+    if norm == 0:
+        return vector
+    return [v / norm for v in vector]
+
+
+def cosine_similarity(a: list[float], b: list[float]) -> float:
+    if len(a) != len(b) or not a:
+        return 0.0
+    return float(sum(x * y for x, y in zip(a, b, strict=True)))
+
+
+def extract_profile_facts_from_text(text: str) -> list[str]:
+    facts: list[str] = []
+    cleaned = " ".join(text.strip().split())
+    if not cleaned:
+        return facts
+
+    patterns = [
+        r"\bmy name is ([A-Za-z][A-Za-z .'-]{1,50})",
+        r"\bi am ([A-Za-z][A-Za-z .'-]{1,50})\b",
+        r"\bi'm ([A-Za-z][A-Za-z .'-]{1,50})\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, cleaned, flags=re.IGNORECASE)
+        if match:
+            value = match.group(1).strip(" .")
+            facts.append(f"Name: {value}")
+            break
+
+    company_patterns = [
+        r"\bi work at ([A-Za-z0-9][A-Za-z0-9 &.,'-]{1,80})",
+        r"\bi am at ([A-Za-z0-9][A-Za-z0-9 &.,'-]{1,80})",
+        r"\bfrom ([A-Za-z0-9][A-Za-z0-9 &.,'-]{1,80})",
+    ]
+    for pattern in company_patterns:
+        match = re.search(pattern, cleaned, flags=re.IGNORECASE)
+        if match:
+            value = match.group(1).strip(" .")
+            facts.append(f"Company: {value}")
+            break
+
+    role_patterns = [
+        r"\bi am a ([A-Za-z][A-Za-z0-9 /-]{2,80})",
+        r"\bi'm a ([A-Za-z][A-Za-z0-9 /-]{2,80})",
+        r"\bmy role is ([A-Za-z][A-Za-z0-9 /-]{2,80})",
+    ]
+    for pattern in role_patterns:
+        match = re.search(pattern, cleaned, flags=re.IGNORECASE)
+        if match:
+            value = match.group(1).strip(" .")
+            facts.append(f"Role: {value}")
+            break
+
+    if "@" in cleaned and "." in cleaned:
+        email_match = re.search(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}", cleaned)
+        if email_match:
+            facts.append(f"Email: {email_match.group(0)}")
+
+    return list(dict.fromkeys(facts))
+
+
+def select_relevant_profile_facts(
+    query_text: str, memories: list[dict[str, object]], top_k: int = 3
+) -> list[ProfileMatch]:
+    query_embedding = embed_text(query_text)
+    matches: list[ProfileMatch] = []
+    for memory in memories:
+        session_id_obj = memory.get("session_id")
+        text_obj = memory.get("text")
+        embedding_obj = memory.get("embedding")
+        if not isinstance(session_id_obj, str):
+            continue
+        if not isinstance(text_obj, str):
+            continue
+        if not isinstance(embedding_obj, list):
+            continue
+        embedding: list[float] = []
+        for value in embedding_obj:
+            if isinstance(value, (float, int)):
+                embedding.append(float(value))
+        if not embedding:
+            continue
+        score = cosine_similarity(query_embedding, embedding)
+        if score > 0.15:
+            matches.append(ProfileMatch(session_id=session_id_obj, text=text_obj, score=score))
+
+    matches.sort(key=lambda item: item.score, reverse=True)
+    return matches[:top_k]
