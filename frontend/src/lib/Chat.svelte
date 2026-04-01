@@ -20,6 +20,19 @@
     type Message,
   } from "./chat-logic";
 
+  const SIDEBAR_OPEN_KEY = "dng_sidebar_open_v1";
+
+  function loadSidebarOpen(): boolean {
+    if (typeof localStorage === "undefined") {
+      return true;
+    }
+    const raw = localStorage.getItem(SIDEBAR_OPEN_KEY);
+    if (raw === null) {
+      return true;
+    }
+    return raw === "1";
+  }
+
   const WELCOME_CONTENT =
     "Hello, and welcome - I'm Denis.\n\nI'd love to hear a bit about what you're looking for, whether that's a full-time role, contract support, or help solving a specific technical challenge. If you're comfortable, feel free to share your name as well.";
 
@@ -58,8 +71,16 @@
   let inputPlaceholder = $state("Share a quick note about your role or hiring need...");
   let placeholderInitialized = $state(false);
   let chatLimitNotice = $state("");
+  let sidebarOpen = $state(loadSidebarOpen());
 
   const canSend = $derived(input.trim().length > 0 && !isStreaming);
+
+  function toggleSidebar(): void {
+    sidebarOpen = !sidebarOpen;
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(SIDEBAR_OPEN_KEY, sidebarOpen ? "1" : "0");
+    }
+  }
 
   function getFallbackPlaceholder(): string {
     const hasUserMessage = messages.some((message) => message.role === "user");
@@ -147,13 +168,14 @@
 </script>
 
 <div class={styles.shell}>
-  <header class={styles.header}>
-    <span class={styles.logo}>&#9670;</span>
-    <h1 class={styles.title}>Denis Ngugi Gathondu's Chatbot</h1>
-  </header>
-
-  <div class={styles.body}>
-    <aside class={styles.sidebar}>
+  <div
+    class={`${styles.layout} ${sidebarOpen ? "" : styles.layoutSidebarCollapsed}`}
+  >
+    <aside
+      id="chat-sidebar"
+      class={styles.sidebar}
+      inert={!sidebarOpen}
+    >
       <button class={styles.newChatBtn} type="button" onclick={handleCreateChat}>
         + New chat
       </button>
@@ -166,12 +188,29 @@
             <button
               class={styles.chatSwitchBtn}
               type="button"
+              aria-current={chat.sessionId === activeSessionId ? "true" : undefined}
               onclick={() => {
                 chatLimitNotice = "";
                 activeSessionId = chat.sessionId;
               }}
             >
-              {chat.title}
+              <span class={styles.chatSwitchIcon} aria-hidden="true">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                >
+                  <path
+                    d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"
+                  ></path>
+                </svg>
+              </span>
+              <span class={styles.chatSwitchLabel}>{chat.title}</span>
             </button>
             <button
               class={styles.chatDeleteBtn}
@@ -186,65 +225,100 @@
       </div>
     </aside>
 
-    <div class={styles.chatPane}>
-      <div class={styles.thread} bind:this={threadEl}>
-        {#each messages as msg}
-          <div class={`${styles.bubble} ${styles[msg.role]}`}>
-            <span class={styles.roleLabel}
-              >{msg.role === "user" ? "You" : "Denis"}</span
-            >
-            {#if msg.streaming && !msg.content.trim()}
-              <div class={styles.typingIndicator} aria-label="Denis is typing">
-                <span class={styles.typingDot}></span>
-                <span class={styles.typingDot}></span>
-                <span class={styles.typingDot}></span>
-              </div>
-            {:else}
-              <div class={styles.markdown}>
-                {@html renderMarkdown(msg.content)}
-                {#if msg.streaming}<span class={styles.cursor}>|</span>{/if}
-              </div>
-            {/if}
-          </div>
-        {/each}
-      </div>
-
-      <form
-        class={styles.inputBar}
-        onsubmit={(e) => {
-          e.preventDefault();
-          void submitMessage();
-        }}
-      >
-        <textarea
-          class={styles.textarea}
-          placeholder={inputPlaceholder}
-          rows={1}
-          bind:value={input}
-          onkeydown={(event) => handleEnterToSend(event, submitMessage)}
-          disabled={isStreaming}
-        ></textarea>
+    <div class={styles.mainColumn}>
+      <header class={styles.header}>
         <button
-          class={styles.sendBtn}
-          type="submit"
-          disabled={!canSend}
-          aria-label="Send"
+          class={styles.sidebarToggle}
+          type="button"
+          onclick={toggleSidebar}
+          aria-expanded={sidebarOpen}
+          aria-controls="chat-sidebar"
+          title={sidebarOpen ? "Hide conversations" : "Show conversations"}
         >
+          <span class={styles.srOnly}>
+            {sidebarOpen ? "Hide conversation list" : "Show conversation list"}
+          </span>
           <svg
-            width="20"
-            height="20"
+            width="22"
+            height="22"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            stroke-width="2.5"
+            stroke-width="2"
             stroke-linecap="round"
             stroke-linejoin="round"
+            aria-hidden="true"
           >
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            <rect x="3" y="4" width="7" height="16" rx="1"></rect>
+            <line x1="14" y1="8" x2="21" y2="8"></line>
+            <line x1="14" y1="12" x2="21" y2="12"></line>
+            <line x1="14" y1="16" x2="21" y2="16"></line>
           </svg>
         </button>
-      </form>
+        <span class={styles.logo}>&#9670;</span>
+        <h1 class={styles.title}>Denis Ngugi Gathondu's Chatbot</h1>
+      </header>
+
+      <div class={styles.chatPane}>
+        <div class={styles.thread} bind:this={threadEl}>
+          {#each messages as msg}
+            <div class={`${styles.bubble} ${styles[msg.role]}`}>
+              <span class={styles.roleLabel}
+                >{msg.role === "user" ? "You" : "Denis"}</span
+              >
+              {#if msg.streaming && !msg.content.trim()}
+                <div class={styles.typingIndicator} aria-label="Denis is typing">
+                  <span class={styles.typingDot}></span>
+                  <span class={styles.typingDot}></span>
+                  <span class={styles.typingDot}></span>
+                </div>
+              {:else}
+                <div class={styles.markdown}>
+                  {@html renderMarkdown(msg.content)}
+                  {#if msg.streaming}<span class={styles.cursor}>|</span>{/if}
+                </div>
+              {/if}
+            </div>
+          {/each}
+        </div>
+
+        <form
+          class={styles.inputBar}
+          onsubmit={(e) => {
+            e.preventDefault();
+            void submitMessage();
+          }}
+        >
+          <textarea
+            class={styles.textarea}
+            placeholder={inputPlaceholder}
+            rows={1}
+            bind:value={input}
+            onkeydown={(event) => handleEnterToSend(event, submitMessage)}
+            disabled={isStreaming}
+          ></textarea>
+          <button
+            class={styles.sendBtn}
+            type="submit"
+            disabled={!canSend}
+            aria-label="Send"
+          >
+            <svg
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2.5"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
+              <line x1="22" y1="2" x2="11" y2="13"></line>
+              <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+          </button>
+        </form>
+      </div>
     </div>
   </div>
 </div>
