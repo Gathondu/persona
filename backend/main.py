@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 
-from agent import stream_response
+from agent import PLACEHOLDER_FALLBACK, generate_placeholder, stream_response
 from memory import get_history, init_db, save_message
 
 load_dotenv(override=True)
@@ -39,6 +39,14 @@ class ChatRequest(BaseModel):
     message: str
 
 
+class PlaceholderRequest(BaseModel):
+    session_id: str
+
+
+class PlaceholderResponse(BaseModel):
+    placeholder: str
+
+
 def _to_chat_message(role: str, content: str) -> ChatCompletionMessageParam:
     if role == "user":
         return {"role": "user", "content": content}
@@ -55,6 +63,17 @@ async def _sse_stream(session_id: str, user_message: str) -> AsyncIterator[str]:
             history.append(_to_chat_message(item["role"], item["content"]))
         except ValueError:
             logger.warning("Skipping unsupported history role: %s", item["role"])
+
+    if raw_history:
+        history.append(
+            {
+                "role": "system",
+                "content": (
+                    "The conversation has already started. Continue naturally without "
+                    "re-greeting, re-introducing yourself, or repeating welcome language."
+                ),
+            }
+        )
 
     history.append(_to_chat_message("user", user_message))
 
@@ -96,6 +115,28 @@ async def chat(request: ChatRequest) -> StreamingResponse:
 @app.get("/history/{session_id}")
 async def history(session_id: str) -> list[dict[str, str]]:
     return get_history(session_id)
+
+
+@app.post("/placeholder", response_model=PlaceholderResponse)
+async def placeholder(request: PlaceholderRequest) -> PlaceholderResponse:
+    recent_history = get_history(request.session_id, limit=8)
+    if not recent_history:
+        return PlaceholderResponse(placeholder=PLACEHOLDER_FALLBACK)
+
+    messages: list[ChatCompletionMessageParam] = []
+    for item in recent_history:
+        try:
+            messages.append(_to_chat_message(item["role"], item["content"]))
+        except ValueError:
+            logger.warning("Skipping unsupported history role: %s", item["role"])
+
+    try:
+        suggested = await generate_placeholder(messages)
+    except Exception as exc:
+        logger.exception("Placeholder generation failed: %s", exc)
+        suggested = PLACEHOLDER_FALLBACK
+
+    return PlaceholderResponse(placeholder=suggested)
 
 
 @app.get("/health")

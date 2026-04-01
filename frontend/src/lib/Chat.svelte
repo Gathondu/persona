@@ -2,6 +2,7 @@
   import styles from "./Chat.module.css";
   import {
     createSubmitMessage,
+    fetchSuggestedPlaceholder,
     handleEnterToSend,
     renderMarkdown,
     type Message,
@@ -19,14 +20,34 @@
   let input = $state("");
   let isStreaming = $state(false);
   let threadEl = $state<HTMLElement | null>(null);
+  let inputPlaceholder = $state("Share a quick note about your role or hiring need...");
+  let placeholderInitialized = $state(false);
 
   const canSend = $derived(input.trim().length > 0 && !isStreaming);
-  const hasUserMessage = $derived(messages.some((message) => message.role === "user"));
-  const inputPlaceholder = $derived(
-    hasUserMessage
-      ? "Share more context, goals, or questions..."
-      : "Share a quick note about your role or hiring need...",
-  );
+
+  function getFallbackPlaceholder(): string {
+    const hasUserMessage = messages.some((message) => message.role === "user");
+    if (hasUserMessage) {
+      return "Share more context, goals, or questions...";
+    }
+    return "Share a quick note about your role or hiring need...";
+  }
+
+  async function refreshPlaceholder(): Promise<void> {
+    inputPlaceholder = await fetchSuggestedPlaceholder(
+      sessionId,
+      getFallbackPlaceholder(),
+    );
+  }
+
+  $effect(() => {
+    if (placeholderInitialized) {
+      return;
+    }
+    placeholderInitialized = true;
+    void refreshPlaceholder();
+  });
+
   const submitMessage = createSubmitMessage({
     getInput: () => input,
     getIsStreaming: () => isStreaming,
@@ -35,6 +56,7 @@
     setInput: (value) => (input = value),
     setIsStreaming: (value) => (isStreaming = value),
     sessionId,
+    onAssistantComplete: refreshPlaceholder,
   });
 </script>
 
@@ -52,7 +74,7 @@
         >
         <div class={styles.markdown}>
           {@html renderMarkdown(msg.content)}
-          {#if msg.streaming}<span class={styles.cursor}>▌</span>{/if}
+          {#if msg.streaming}<span class={styles.cursor}>|</span>{/if}
         </div>
       </div>
     {/each}

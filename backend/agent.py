@@ -21,6 +21,7 @@ _client = AsyncOpenAI(
 )
 
 MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-3.5-sonnet")
+PLACEHOLDER_FALLBACK = "Share more context, goals, or questions..."
 
 
 async def stream_response(
@@ -41,3 +42,37 @@ async def stream_response(
         delta = chunk.choices[0].delta
         if delta.content is not None:
             yield delta.content
+
+
+async def generate_placeholder(
+    messages: list[ChatCompletionMessageParam],
+) -> str:
+    """Generate a short, context-aware input placeholder."""
+    placeholder_messages: list[ChatCompletionMessageParam] = [
+        {
+            "role": "system",
+            "content": (
+                "Generate one concise text-box placeholder for the user's next message. "
+                "Use the conversation context, stay professional, avoid greetings, "
+                "and return plain text only with no quotes. Keep it under 80 characters."
+            ),
+        },
+    ]
+    placeholder_messages.extend(messages)
+    placeholder_messages.append(
+        {
+            "role": "user",
+            "content": "Create the best placeholder for the user's next message.",
+        }
+    )
+
+    response = await _client.chat.completions.create(
+        model=MODEL,
+        messages=placeholder_messages,
+        stream=False,
+    )
+    content = response.choices[0].message.content or ""
+    text = content.strip()
+    if not text:
+        return PLACEHOLDER_FALLBACK
+    return text.replace("\n", " ")[:80]

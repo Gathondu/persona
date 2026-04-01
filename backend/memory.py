@@ -30,12 +30,23 @@ def init_db() -> None:
         )
 
 
-def get_history(session_id: str) -> list[dict[str, str]]:
+def get_history(session_id: str, limit: int | None = None) -> list[dict[str, str]]:
     with _get_conn() as conn:
-        rows = conn.execute(
-            "SELECT role, content FROM messages WHERE session_id = ? ORDER BY id",
-            (session_id,),
-        ).fetchall()
+        if limit is None:
+            rows = conn.execute(
+                "SELECT role, content FROM messages WHERE session_id = ? ORDER BY id",
+                (session_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                (
+                    "SELECT role, content FROM ("
+                    "SELECT id, role, content FROM messages "
+                    "WHERE session_id = ? ORDER BY id DESC LIMIT ?"
+                    ") ORDER BY id ASC"
+                ),
+                (session_id, limit),
+            ).fetchall()
     return [{"role": r["role"], "content": r["content"]} for r in rows]
 
 

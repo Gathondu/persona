@@ -20,6 +20,7 @@ interface SendMessageArgs {
   setInput: (value: string) => void;
   setIsStreaming: (value: boolean) => void;
   threadEl: HTMLElement | null;
+  onAssistantComplete?: () => void | Promise<void>;
 }
 
 interface SubmitMessageBindings {
@@ -30,6 +31,7 @@ interface SubmitMessageBindings {
   setInput: (value: string) => void;
   setIsStreaming: (value: boolean) => void;
   sessionId: string;
+  onAssistantComplete?: () => void | Promise<void>;
 }
 
 marked.setOptions({
@@ -107,6 +109,9 @@ export async function sendMessage(args: SendMessageArgs): Promise<void> {
     args.messages[args.messages.length - 1].streaming = false;
     args.setIsStreaming(false);
     scrollToBottom(args.threadEl);
+    if (args.onAssistantComplete) {
+      await args.onAssistantComplete();
+    }
   }
 }
 
@@ -122,7 +127,34 @@ export function createSubmitMessage(
       setInput: bindings.setInput,
       setIsStreaming: bindings.setIsStreaming,
       threadEl: bindings.getThreadEl(),
+      onAssistantComplete: bindings.onAssistantComplete,
     });
+}
+
+export async function fetchSuggestedPlaceholder(
+  sessionId: string,
+  fallback: string,
+): Promise<string> {
+  try {
+    const response = await fetch("/placeholder", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ session_id: sessionId }),
+    });
+    if (!response.ok) {
+      return fallback;
+    }
+
+    const payload = (await response.json()) as { placeholder?: string };
+    const placeholder = payload.placeholder?.trim();
+    if (!placeholder) {
+      return fallback;
+    }
+
+    return placeholder;
+  } catch {
+    return fallback;
+  }
 }
 
 export function handleEnterToSend(
