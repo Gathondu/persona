@@ -5,6 +5,7 @@ import os
 import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
+from hashlib import sha256
 
 from dotenv import load_dotenv
 from openai import AsyncOpenAI
@@ -95,7 +96,8 @@ def embed_text(text: str) -> list[float]:
     if not tokens:
         return vector
     for token in tokens:
-        idx = hash(token) % EMBEDDING_SIZE
+        digest = sha256(token.encode("utf-8")).digest()
+        idx = int.from_bytes(digest[:4], byteorder="big") % EMBEDDING_SIZE
         vector[idx] += 1.0
     norm = math.sqrt(sum(v * v for v in vector))
     if norm == 0:
@@ -107,6 +109,25 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     if len(a) != len(b) or not a:
         return 0.0
     return float(sum(x * y for x, y in zip(a, b, strict=True)))
+
+
+def _clean_name_value(raw_value: str) -> str:
+    value = raw_value.strip(" .")
+    value = re.split(r"[,.!?]", value, maxsplit=1)[0]
+    value = re.split(
+        r"\s+\b(?:and|but)\b\s+",
+        value,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0]
+    value = re.split(
+        r"\s+\b(?:i am|i'm|my role is|i work at|looking for)\b",
+        value,
+        maxsplit=1,
+        flags=re.IGNORECASE,
+    )[0]
+    value = re.sub(r"\b(?:and|an)\s*$", "", value, flags=re.IGNORECASE)
+    return " ".join(value.split()).strip(" .")
 
 
 def extract_profile_facts_from_text(text: str) -> list[str]:
@@ -123,8 +144,9 @@ def extract_profile_facts_from_text(text: str) -> list[str]:
     for pattern in patterns:
         match = re.search(pattern, cleaned, flags=re.IGNORECASE)
         if match:
-            value = match.group(1).strip(" .")
-            facts.append(f"Name: {value}")
+            value = _clean_name_value(match.group(1))
+            if value:
+                facts.append(f"Name: {value}")
             break
 
     company_patterns = [
@@ -163,26 +185,43 @@ def select_relevant_profile_facts(
     query_text: str, memories: list[dict[str, object]], top_k: int = 3
 ) -> list[ProfileMatch]:
     query_embedding = embed_text(query_text)
+    query_lower = query_text.lower()
     matches: list[ProfileMatch] = []
+
+    requested_labels: set[str] = set()
+    if any(keyword in query_lower for keyword in ("name", "call me", "who am i")):
+        requested_labels.add("name")
+    if any(keyword in query_lower for keyword in ("company", "work at", "where do i work")):
+        requested_labels.add("company")
+    if any(keyword in query_lower for keyword in ("role", "job title", "position")):
+        requested_labels.add("role")
+    if "email" in query_lower:
+        requested_labels.add("email")
+
     for memory in memories:
         session_id_obj = memory.get("session_id")
         text_obj = memory.get("text")
-        embedding_obj = memory.get("embedding")
         if not isinstance(session_id_obj, str):
             continue
         if not isinstance(text_obj, str):
             continue
-        if not isinstance(embedding_obj, list):
-            continue
-        embedding: list[float] = []
-        for value in embedding_obj:
-            if isinstance(value, (float, int)):
-                embedding.append(float(value))
-        if not embedding:
-            continue
-        score = cosine_similarity(query_embedding, embedding)
-        if score > 0.15:
-            matches.append(ProfileMatch(session_id=session_id_obj, text=text_obj, score=score))
+
+        score = cosine_similarity(query_embedding, embed_text(text_obj))
+        label = ""
+        if ":" in text_obj:
+            label = text_obj.split(":", 1)[0].strip().lower()
+        canonical_text = text_obj
+        if label == "name":
+            raw_name = text_obj.split(":", 1)[1].strip() if ":" in text_obj else text_obj
+            cleaned_name = _clean_name_value(raw_name)
+            if cleaned_name:
+                canonical_text = f"Name: {cleaned_name}"
+                score = cosine_similarity(query_embedding, embed_text(canonical_text))
+        if label in requested_labels:
+            score = max(score, 1.0)
+
+        if score > 0.12:
+            matches.append(ProfileMatch(session_id=session_id_obj, text=canonical_text, score=score))
 
     matches.sort(key=lambda item: item.score, reverse=True)
     return matches[:top_k]
