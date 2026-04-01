@@ -15,6 +15,12 @@
   let threadEl = $state<HTMLElement | null>(null);
 
   const canSend = $derived(input.trim().length > 0 && !isStreaming);
+  const hasUserMessage = $derived(messages.some((message) => message.role === "user"));
+  const inputPlaceholder = $derived(
+    hasUserMessage
+      ? "Share more context, goals, or questions..."
+      : "Share a quick note about your role or hiring need...",
+  );
   const submitMessage = createSubmitMessage({
     getInput: () => input,
     getIsStreaming: () => isStreaming,
@@ -35,10 +41,18 @@
   <div class={styles.thread} bind:this={threadEl}>
     {#if messages.length === 0}
       <div class={styles.empty}>
-        <div class={`${styles.bubble} ${styles.assistant} ${styles.starterBubble}`}>
-          <span class={styles.roleLabel}>Denis</span>
-          <div class={styles.markdown}>
-            <p>Hi there - how are you today, and what is your name?</p>
+        <div class={styles.starterStack}>
+          <div class={`${styles.bubble} ${styles.assistant} ${styles.starterBubble}`}>
+            <span class={styles.roleLabel}>Denis</span>
+            <div class={styles.markdown}>
+              <p>Hello, and welcome - I&apos;m Denis.</p>
+              <p>
+                I&apos;d love to hear a bit about what you&apos;re looking for, whether
+                that&apos;s a full-time role, contract support, or help solving a
+                specific technical challenge. If you&apos;re comfortable, feel free
+                to share your name as well.
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -65,7 +79,7 @@
   >
     <textarea
       class={styles.textarea}
-      placeholder="Ask away..."
+      placeholder={inputPlaceholder}
       rows={1}
       bind:value={input}
       onkeydown={(event) => handleEnterToSend(event, submitMessage)}

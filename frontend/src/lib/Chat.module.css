@@ -103,6 +103,13 @@
   margin-left: 0;
 }
 
+.starterStack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
 /* ─── Bubbles ────────────────────────────────────────────── */
 .bubble {
   max-width: min(82%, 680px);
