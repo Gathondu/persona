@@ -35,7 +35,12 @@
   <div class={styles.thread} bind:this={threadEl}>
     {#if messages.length === 0}
       <div class={styles.empty}>
-        <p>Start a conversation with Denis.</p>
+        <div class={`${styles.bubble} ${styles.assistant} ${styles.starterBubble}`}>
+          <span class={styles.roleLabel}>Denis</span>
+          <div class={styles.markdown}>
+            <p>Hi there - how are you today, and what is your name?</p>
+          </div>
+        </div>
       </div>
     {/if}
     {#each messages as msg}
