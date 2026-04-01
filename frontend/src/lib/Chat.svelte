@@ -72,10 +72,18 @@
         <span class={styles.roleLabel}
           >{msg.role === "user" ? "You" : "Denis"}</span
         >
-        <div class={styles.markdown}>
-          {@html renderMarkdown(msg.content)}
-          {#if msg.streaming}<span class={styles.cursor}>|</span>{/if}
-        </div>
+        {#if msg.streaming && !msg.content.trim()}
+          <div class={styles.typingIndicator} aria-label="Denis is typing">
+            <span class={styles.typingDot}></span>
+            <span class={styles.typingDot}></span>
+            <span class={styles.typingDot}></span>
+          </div>
+        {:else}
+          <div class={styles.markdown}>
+            {@html renderMarkdown(msg.content)}
+            {#if msg.streaming}<span class={styles.cursor}>|</span>{/if}
+          </div>
+        {/if}
       </div>
     {/each}
   </div>

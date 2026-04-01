@@ -226,6 +226,31 @@
   opacity: 0.85;
 }
 
+.typingIndicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 18px;
+  padding: 2px 0;
+}
+
+.typingDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.35;
+  animation: typingPulse 1s infinite ease-in-out;
+}
+
+.typingDot:nth-child(2) {
+  animation-delay: 0.18s;
+}
+
+.typingDot:nth-child(3) {
+  animation-delay: 0.36s;
+}
+
 /* ─── Input bar ──────────────────────────────────────────── */
 .inputBar {
   display: flex;
@@ -308,8 +333,26 @@
   }
 }
 
+@keyframes typingPulse {
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bubble {
     animation: none;
+  }
+
+  .typingDot {
+    animation: none;
+    opacity: 0.8;
   }
 }
