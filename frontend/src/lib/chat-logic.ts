@@ -52,7 +52,9 @@ export function scrollToBottom(threadEl: HTMLElement | null): void {
 
 export async function sendMessage(args: SendMessageArgs): Promise<void> {
   const text = args.input.trim();
-  if (!text || args.isStreaming) return;
+  if (!text || args.isStreaming) {
+    return;
+  }
 
   args.setInput("");
   args.setIsStreaming(true);
