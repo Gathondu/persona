@@ -1,13 +1,11 @@
 <script lang="ts">
-  import DOMPurify from "dompurify";
-  import { marked } from "marked";
   import styles from "./Chat.module.css";
-
-  interface Message {
-    role: "user" | "assistant";
-    content: string;
-    streaming?: boolean;
-  }
+  import {
+    createSubmitMessage,
+    handleEnterToSend,
+    renderMarkdown,
+    type Message,
+  } from "./chat-logic";
 
   const sessionId = crypto.randomUUID();
 
@@ -17,94 +15,15 @@
   let threadEl = $state<HTMLElement | null>(null);
 
   const canSend = $derived(input.trim().length > 0 && !isStreaming);
-
-  marked.setOptions({
-    breaks: true,
-    gfm: true,
+  const submitMessage = createSubmitMessage({
+    getInput: () => input,
+    getIsStreaming: () => isStreaming,
+    getMessages: () => messages,
+    getThreadEl: () => threadEl,
+    setInput: (value) => (input = value),
+    setIsStreaming: (value) => (isStreaming = value),
+    sessionId,
   });
-
-  function renderMarkdown(content: string): string {
-    const html = marked.parse(content, { async: false });
-    return DOMPurify.sanitize(html);
-  }
-
-  function scrollToBottom() {
-    if (threadEl) {
-      threadEl.scrollTop = threadEl.scrollHeight;
-    }
-  }
-
-  async function sendMessage() {
-    const text = input.trim();
-    if (!text || isStreaming) return;
-
-    input = "";
-    isStreaming = true;
-
-    messages.push({ role: "user", content: text });
-    messages.push({ role: "assistant", content: "", streaming: true });
-
-    scrollToBottom();
-
-    try {
-      const res = await fetch("/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ session_id: sessionId, message: text }),
-      });
-
-      if (!res.ok || !res.body) {
-        throw new Error(`HTTP ${res.status}`);
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const raw = line.slice(6).trim();
-          if (raw === "[DONE]") break;
-
-          try {
-            const parsed = JSON.parse(raw) as {
-              token?: string;
-              error?: string;
-            };
-            if (parsed.error) throw new Error(parsed.error);
-            if (parsed.token) {
-              messages[messages.length - 1].content += parsed.token;
-              scrollToBottom();
-            }
-          } catch {
-            // malformed SSE chunk — skip
-          }
-        }
-      }
-    } catch (err) {
-      messages[messages.length - 1].content =
-        `Error: ${err instanceof Error ? err.message : "Unknown error"}`;
-    } finally {
-      messages[messages.length - 1].streaming = false;
-      isStreaming = false;
-      scrollToBottom();
-    }
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
 </script>
 
 <div class={styles.shell}>
@@ -136,7 +55,7 @@
     class={styles.inputBar}
     onsubmit={(e) => {
       e.preventDefault();
-      sendMessage();
+      void submitMessage();
     }}
   >
     <textarea
@@ -144,7 +63,7 @@
       placeholder="Ask away..."
       rows={1}
       bind:value={input}
-      onkeydown={handleKeydown}
+      onkeydown={(event) => handleEnterToSend(event, submitMessage)}
       disabled={isStreaming}
     ></textarea>
     <button
