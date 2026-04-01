@@ -3,10 +3,13 @@ from __future__ import annotations
 import os
 from collections.abc import AsyncIterator
 
+from dotenv import load_dotenv
 from openai import AsyncOpenAI
+from openai.types.chat import ChatCompletionMessageParam
 
-# TODO: Fill in your personal system prompt to define your AI double's voice and expertise.
-SYSTEM_PROMPT: str = ""
+from prompt_templates import SYSTEM_PROMPT
+
+load_dotenv(override=True)
 
 _client = AsyncOpenAI(
     api_key=os.environ["OPENROUTER_API_KEY"],
@@ -21,17 +24,17 @@ MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-3.5-sonnet")
 
 
 async def stream_response(
-    messages: list[dict[str, str]],
+    messages: list[ChatCompletionMessageParam],
 ) -> AsyncIterator[str]:
     """Stream token chunks from the LLM via OpenRouter."""
-    full_messages: list[dict[str, str]] = []
+    full_messages: list[ChatCompletionMessageParam] = []
     if SYSTEM_PROMPT:
         full_messages.append({"role": "system", "content": SYSTEM_PROMPT})
     full_messages.extend(messages)
 
     stream = await _client.chat.completions.create(
         model=MODEL,
-        messages=full_messages,  # type: ignore[arg-type]
+        messages=full_messages,
         stream=True,
     )
     async for chunk in stream:

@@ -2,20 +2,21 @@ from __future__ import annotations
 
 import json
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import AsyncIterator
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel
 
 from agent import stream_response
 from memory import get_history, init_db, save_message
 
-load_dotenv()
+load_dotenv(override=True)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -30,7 +31,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="My AI Double", lifespan=lifespan)
+app = FastAPI(title="DNG", lifespan=lifespan)
 
 
 class ChatRequest(BaseModel):
@@ -38,9 +39,24 @@ class ChatRequest(BaseModel):
     message: str
 
 
+def _to_chat_message(role: str, content: str) -> ChatCompletionMessageParam:
+    if role == "user":
+        return {"role": "user", "content": content}
+    if role == "assistant":
+        return {"role": "assistant", "content": content}
+    raise ValueError(f"Unsupported chat role in history: {role}")
+
+
 async def _sse_stream(session_id: str, user_message: str) -> AsyncIterator[str]:
-    history = get_history(session_id)
-    history.append({"role": "user", "content": user_message})
+    raw_history = get_history(session_id)
+    history: list[ChatCompletionMessageParam] = []
+    for item in raw_history:
+        try:
+            history.append(_to_chat_message(item["role"], item["content"]))
+        except ValueError:
+            logger.warning("Skipping unsupported history role: %s", item["role"])
+
+    history.append(_to_chat_message("user", user_message))
 
     save_message(session_id, "user", user_message)
 
