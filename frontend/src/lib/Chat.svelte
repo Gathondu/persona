@@ -9,7 +9,13 @@
 
   const sessionId = crypto.randomUUID();
 
-  let messages = $state<Message[]>([]);
+  let messages = $state<Message[]>([
+    {
+      role: "assistant",
+      content:
+        "Hello, and welcome - I'm Denis.\n\nI'd love to hear a bit about what you're looking for, whether that's a full-time role, contract support, or help solving a specific technical challenge. If you're comfortable, feel free to share your name as well.",
+    },
+  ]);
   let input = $state("");
   let isStreaming = $state(false);
   let threadEl = $state<HTMLElement | null>(null);
@@ -39,24 +45,6 @@
   </header>
 
   <div class={styles.thread} bind:this={threadEl}>
-    {#if messages.length === 0}
-      <div class={styles.empty}>
-        <div class={styles.starterStack}>
-          <div class={`${styles.bubble} ${styles.assistant} ${styles.starterBubble}`}>
-            <span class={styles.roleLabel}>Denis</span>
-            <div class={styles.markdown}>
-              <p>Hello, and welcome - I&apos;m Denis.</p>
-              <p>
-                I&apos;d love to hear a bit about what you&apos;re looking for, whether
-                that&apos;s a full-time role, contract support, or help solving a
-                specific technical challenge. If you&apos;re comfortable, feel free
-                to share your name as well.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    {/if}
     {#each messages as msg}
       <div class={`${styles.bubble} ${styles[msg.role]}`}>
         <span class={styles.roleLabel}
