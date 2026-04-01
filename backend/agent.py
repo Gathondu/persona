@@ -1,0 +1,40 @@
+from __future__ import annotations
+
+import os
+from collections.abc import AsyncIterator
+
+from openai import AsyncOpenAI
+
+# TODO: Fill in your personal system prompt to define your AI double's voice and expertise.
+SYSTEM_PROMPT: str = ""
+
+_client = AsyncOpenAI(
+    api_key=os.environ["OPENROUTER_API_KEY"],
+    base_url="https://openrouter.ai/api/v1",
+    default_headers={
+        "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
+        "X-Title": "My AI Double",
+    },
+)
+
+MODEL = os.getenv("OPENROUTER_MODEL", "anthropic/claude-3.5-sonnet")
+
+
+async def stream_response(
+    messages: list[dict[str, str]],
+) -> AsyncIterator[str]:
+    """Stream token chunks from the LLM via OpenRouter."""
+    full_messages: list[dict[str, str]] = []
+    if SYSTEM_PROMPT:
+        full_messages.append({"role": "system", "content": SYSTEM_PROMPT})
+    full_messages.extend(messages)
+
+    stream = await _client.chat.completions.create(
+        model=MODEL,
+        messages=full_messages,  # type: ignore[arg-type]
+        stream=True,
+    )
+    async for chunk in stream:
+        delta = chunk.choices[0].delta
+        if delta.content is not None:
+            yield delta.content

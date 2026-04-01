@@ -1,0 +1,30 @@
+# Environment
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.db
+*.sqlite3
+
+# uv
+.python-version
+
+# Node
+node_modules/
+
+# Build output (generated — do not commit)
+backend/static/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
