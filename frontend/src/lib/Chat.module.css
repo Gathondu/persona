@@ -1,15 +1,5 @@
-/* ─── Design Tokens ─────────────────────────────────────── */
+/* ─── Design Tokens (layout / motion only; colors live in global.css) ─── */
 :root {
-  --bg: #0d0f14;
-  --surface: #161a23;
-  --surface-2: #1e2434;
-  --border: #2a3045;
-  --accent: #7c6af7;
-  --accent-dim: #4e3fb5;
-  --text: #e8eaf0;
-  --text-muted: #6b7699;
-  --user-bg: #1a2040;
-  --assistant-bg: #131720;
   --radius: 12px;
   --radius-sm: 6px;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
@@ -17,7 +7,6 @@
   --transition: 0.2s ease;
   --sidebar-w: 240px;
   --transition-panel: 0.22s ease;
-  --toast-warn: #e8a84a;
   --chat-pad-x: clamp(16px, 4vw, 32px);
   --chat-pad-y: clamp(18px, 3vw, 28px);
   --input-float-max: 42rem;
@@ -41,8 +30,8 @@
   display: flex;
   flex-direction: column;
   height: 100dvh;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-primary);
+  color: var(--text-primary);
   font-family: var(--font-sans);
 }
 
@@ -63,8 +52,8 @@
   z-index: 2;
   width: var(--sidebar-w);
   flex-shrink: 0;
-  border-right: 1px solid var(--border);
-  background: var(--surface);
+  border-right: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
   padding: 12px 10px;
   display: flex;
   flex-direction: column;
@@ -101,13 +90,13 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  background: var(--bg);
+  background: var(--bg-primary);
 }
 
 .newChatBtn {
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--text);
+  border: 1px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-primary);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
   text-align: left;
@@ -115,10 +104,12 @@
 }
 
 .newChatBtn:hover {
-  border-color: var(--accent-dim);
+  background: var(--bg-accent);
+  border-color: var(--border-subtle);
 }
 
 .chatList {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -126,18 +117,83 @@
   overflow-y: auto;
 }
 
+.themeRow {
+  flex-shrink: 0;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.themeLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.themeToggle {
+  display: flex;
+  gap: 4px;
+}
+
+.themeOption {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  padding: 0;
+  min-height: 38px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition:
+    background var(--transition),
+    border-color var(--transition),
+    color var(--transition);
+}
+
+.themeIcon {
+  flex-shrink: 0;
+}
+
+.themeOption:hover {
+  background: var(--bg-accent);
+  color: var(--text-primary);
+}
+
+.themeOption:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.themeOptionActive {
+  background: var(--accent-soft);
+  border-color: var(--accent-primary);
+  color: var(--text-primary);
+}
+
 .chatItem {
   display: flex;
   align-items: center;
   gap: 6px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   background: transparent;
 }
 
+.chatItem:not(.chatItemActive):hover {
+  background: var(--bg-accent);
+}
+
 .chatItemActive {
-  border-color: var(--accent-dim);
-  background: rgba(124, 106, 247, 0.12);
+  border-color: var(--accent-primary);
+  background: var(--accent-soft);
 }
 
 .chatSwitchBtn {
@@ -148,21 +204,25 @@
   min-width: 0;
   border: none;
   background: transparent;
-  color: var(--text);
+  color: var(--text-primary);
   text-align: left;
   padding: 8px 8px;
   cursor: pointer;
   font-size: 13px;
 }
 
+.chatItemActive .chatSwitchBtn {
+  color: var(--text-primary);
+}
+
 .chatSwitchIcon {
   flex-shrink: 0;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   opacity: 0.85;
 }
 
 .chatItemActive .chatSwitchIcon {
-  color: var(--accent);
+  color: var(--accent-primary);
   opacity: 1;
 }
 
@@ -179,13 +239,13 @@
   border: none;
   border-radius: 5px;
   background: transparent;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   cursor: pointer;
 }
 
 .chatDeleteBtn:hover {
-  color: #ff8f8f;
-  background: rgba(255, 143, 143, 0.1);
+  color: var(--error);
+  background: color-mix(in srgb, var(--error) 12%, transparent);
 }
 
 .toastHost {
@@ -205,9 +265,9 @@
   max-width: min(100%, 22rem);
   padding: 12px 16px;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface-2);
-  color: var(--toast-warn);
+  border: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
+  color: var(--warning);
   font-size: 13px;
   line-height: 1.45;
   opacity: 0.8;
@@ -233,8 +293,8 @@
   align-items: center;
   gap: 10px;
   padding: 14px 16px 14px 12px;
-  border-bottom: 1px solid var(--border);
-  background: var(--surface);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-secondary);
   flex-shrink: 0;
 }
 
@@ -247,25 +307,27 @@
   height: 40px;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: var(--surface-2);
-  color: var(--text);
+  background: var(--bg-accent);
+  color: var(--text-primary);
   cursor: pointer;
-  transition: border-color var(--transition), opacity var(--transition);
+  transition:
+    border-color var(--transition),
+    opacity var(--transition);
 }
 
 .sidebarToggle:hover {
-  border-color: var(--accent-dim);
+  border-color: var(--accent-primary);
 }
 
 .sidebarToggle:focus-visible {
-  outline: 2px solid var(--accent);
+  outline: 2px solid var(--accent-primary);
   outline-offset: 2px;
 }
 
 .logo {
-  color: var(--accent);
+  color: var(--accent-primary);
   font-size: 20px;
 }
 
@@ -274,16 +336,16 @@
   font-weight: 600;
   margin: 0;
   letter-spacing: -0.02em;
-  color: var(--text);
+  color: var(--text-primary);
 }
 
 .badge {
   margin-left: auto;
   font-size: 11px;
   font-weight: 500;
-  color: var(--text-muted);
-  background: var(--surface-2);
-  border: 1px solid var(--border);
+  color: var(--text-primary);
+  background: var(--accent-soft);
+  border: 1px solid var(--border-subtle);
   padding: 3px 8px;
   border-radius: 20px;
 }
@@ -310,7 +372,7 @@
 }
 
 .thread::-webkit-scrollbar-thumb {
-  background: var(--border);
+  background: var(--border-strong);
   border-radius: 4px;
 }
 
@@ -344,7 +406,7 @@
   width: auto;
   padding: 8px 11px;
   border-radius: var(--radius);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   line-height: 1.45;
   animation: fadeUp 0.18s ease;
 }
@@ -352,15 +414,16 @@
 .user {
   align-self: flex-end;
   margin-left: auto;
-  background: var(--user-bg);
-  border-color: var(--accent-dim);
+  background: var(--bubble-user);
+  border: 1px solid var(--bubble-user);
   border-bottom-right-radius: 4px;
 }
 
 .assistant {
   align-self: flex-start;
   margin-right: auto;
-  background: var(--assistant-bg);
+  background: var(--bubble-bot);
+  border: 1px solid var(--border-subtle);
   border-bottom-left-radius: 4px;
 }
 
@@ -375,13 +438,24 @@
 }
 
 .user .roleLabel {
-  color: var(--accent);
+  color: color-mix(in srgb, var(--bubble-user-text) 82%, transparent);
+}
+
+.assistant .roleLabel {
+  color: var(--text-muted);
 }
 
 .markdown {
   font-size: 14px;
-  color: var(--text);
   word-break: break-word;
+}
+
+.user .markdown {
+  color: var(--bubble-user-text);
+}
+
+.assistant .markdown {
+  color: var(--bubble-bot-text);
 }
 
 .markdown :global(p) {
@@ -410,12 +484,28 @@
   margin: 0.2rem 0;
 }
 
-.markdown :global(pre) {
+.user .markdown :global(pre) {
   margin: 0.45rem 0;
   padding: 0.55rem 0.65rem;
-  border: 1px solid var(--border);
+  border: 1px solid
+    color-mix(in srgb, var(--bubble-user-text) 28%, var(--bubble-user));
   border-radius: var(--radius-sm);
-  background: #0e1220;
+  background: color-mix(
+    in srgb,
+    var(--bubble-user-text) 10%,
+    var(--bubble-user)
+  );
+  color: var(--bubble-user-text);
+  overflow-x: auto;
+}
+
+.assistant .markdown :global(pre) {
+  margin: 0.45rem 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-accent);
+  color: var(--text-primary);
   overflow-x: auto;
 }
 
@@ -424,28 +514,68 @@
   font-size: 0.9em;
 }
 
-.markdown :global(:not(pre) > code) {
+.user .markdown :global(:not(pre) > code) {
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
-  background: rgba(124, 106, 247, 0.2);
+  background: color-mix(
+    in srgb,
+    var(--bubble-user-text) 14%,
+    var(--bubble-user)
+  );
+  color: var(--bubble-user-text);
 }
 
-.markdown :global(blockquote) {
+.assistant .markdown :global(:not(pre) > code) {
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+.user .markdown :global(blockquote) {
   margin: 0.45rem 0;
   padding: 0.1rem 0 0.1rem 0.8rem;
-  border-left: 3px solid var(--accent-dim);
-  color: #c8d0ea;
+  border-left: 3px solid
+    color-mix(in srgb, var(--bubble-user-text) 55%, var(--bubble-user));
+  color: color-mix(in srgb, var(--bubble-user-text) 92%, transparent);
 }
 
-.markdown :global(a) {
-  color: #a89cff;
+.assistant .markdown :global(blockquote) {
+  margin: 0.45rem 0;
+  padding: 0.1rem 0 0.1rem 0.8rem;
+  border-left: 3px solid var(--accent-primary);
+  color: var(--text-secondary);
+}
+
+.user .markdown :global(a) {
+  color: var(--bubble-user-text);
   text-decoration: underline;
 }
 
-.markdown :global(hr) {
+.assistant .markdown :global(a) {
+  color: var(--accent-primary);
+  text-decoration: underline;
+}
+
+.user .markdown :global(hr) {
   border: none;
-  border-top: 1px solid var(--border);
+  border-top: 1px solid
+    color-mix(in srgb, var(--bubble-user-text) 35%, var(--bubble-user));
   margin: 0.8rem 0;
+}
+
+.assistant .markdown :global(hr) {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 0.8rem 0;
+}
+
+.user .cursor {
+  color: var(--bubble-user-text);
+}
+
+.assistant .cursor {
+  color: var(--bubble-bot-text);
 }
 
 .cursor {
@@ -465,9 +595,13 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--typing-dot);
   opacity: 0.35;
   animation: typingPulse 1s infinite ease-in-out;
+}
+
+.user .typingDot {
+  background: var(--typing-dot);
 }
 
 .typingDot:nth-child(2) {
@@ -490,7 +624,7 @@
   align-items: flex-end;
   padding: 0 var(--chat-pad-x) 18px;
   pointer-events: none;
-  background: linear-gradient(to top, var(--bg) 0%, transparent 72%);
+  background: linear-gradient(to top, var(--bg-primary) 0%, transparent 72%);
 }
 
 .inputBar {
@@ -502,9 +636,9 @@
   max-width: min(100% - 8px, var(--input-float-max));
   margin: 0 auto;
   padding: 8px 10px 8px 14px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-subtle);
   border-radius: calc(var(--radius) + 4px);
-  background: var(--surface-2);
+  background: var(--bg-secondary);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.42),
     0 4px 14px rgba(0, 0, 0, 0.28);
@@ -518,7 +652,7 @@
   background: transparent;
   border: none;
   border-radius: var(--radius-sm);
-  color: var(--text);
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 15px;
   line-height: 1.5;
@@ -541,11 +675,11 @@
 }
 
 .inputBar:focus-within {
-  border-color: var(--accent-dim);
+  border-color: var(--accent-primary);
   box-shadow:
     0 12px 40px rgba(0, 0, 0, 0.42),
     0 4px 14px rgba(0, 0, 0, 0.28),
-    0 0 0 1px var(--accent-dim);
+    0 0 0 1px var(--accent-soft);
 }
 
 .textarea:disabled {
@@ -559,23 +693,25 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-sm);
-  background: var(--accent);
+  background: var(--accent-gradient);
   border: none;
-  color: #fff;
+  color: var(--bubble-user-text);
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--transition), transform var(--transition);
+  transition:
+    background var(--transition),
+    transform var(--transition);
 }
 
 .sendBtn:hover:not(:disabled) {
-  background: #9585ff;
+  background: var(--accent-hover);
   transform: translateY(-1px);
 }
 
 .sendBtn:disabled {
-  background: var(--surface-2);
+  background: var(--bg-accent);
   color: var(--text-muted);
   cursor: not-allowed;
   transform: none;

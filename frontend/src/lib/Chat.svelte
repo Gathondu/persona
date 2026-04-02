@@ -21,6 +21,16 @@
   } from "./chat-logic";
 
   const SIDEBAR_OPEN_KEY = "dng_sidebar_open_v1";
+  const THEME_KEY = "dng_theme_v1";
+
+  type ThemePreference = "light" | "dark" | "system";
+
+  function readSystemPrefersDark(): boolean {
+    return (
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-color-scheme: dark)").matches
+    );
+  }
 
   function loadSidebarOpen(): boolean {
     if (typeof localStorage === "undefined") {
@@ -31,6 +41,17 @@
       return true;
     }
     return raw === "1";
+  }
+
+  function loadThemePreference(): ThemePreference {
+    if (typeof localStorage === "undefined") {
+      return "system";
+    }
+    const raw = localStorage.getItem(THEME_KEY);
+    if (raw === "light" || raw === "dark") {
+      return raw;
+    }
+    return "system";
   }
 
   const WELCOME_CONTENT =
@@ -68,10 +89,19 @@
   let input = $state("");
   let isStreaming = $state(false);
   let threadEl = $state<HTMLElement | null>(null);
-  let inputPlaceholder = $state("Share a quick note about your role or hiring need...");
+  let inputPlaceholder = $state(
+    "Share a quick note about your role or hiring need...",
+  );
   let placeholderInitialized = $state(false);
   let chatLimitNotice = $state("");
   let sidebarOpen = $state(loadSidebarOpen());
+  let themePreference = $state(loadThemePreference());
+  let systemPrefersDark = $state(readSystemPrefersDark());
+
+  const effectiveDark = $derived(
+    themePreference === "dark" ||
+      (themePreference === "system" && systemPrefersDark),
+  );
 
   const canSend = $derived(input.trim().length > 0 && !isStreaming);
 
@@ -81,6 +111,40 @@
       localStorage.setItem(SIDEBAR_OPEN_KEY, sidebarOpen ? "1" : "0");
     }
   }
+
+  function setThemePreference(next: "light" | "dark"): void {
+    themePreference = next;
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(THEME_KEY, next);
+    }
+  }
+
+  $effect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (): void => {
+      systemPrefersDark = mq.matches;
+    };
+    onChange();
+    mq.addEventListener("change", onChange);
+    return () => {
+      mq.removeEventListener("change", onChange);
+    };
+  });
+
+  $effect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+    const root = document.documentElement;
+    if (effectiveDark) {
+      root.dataset.theme = "dark";
+    } else {
+      delete root.dataset.theme;
+    }
+  });
 
   function getFallbackPlaceholder(): string {
     const hasUserMessage = messages.some((message) => message.role === "user");
@@ -184,21 +248,25 @@
   <div
     class={`${styles.layout} ${sidebarOpen ? "" : styles.layoutSidebarCollapsed}`}
   >
-    <aside
-      id="chat-sidebar"
-      class={styles.sidebar}
-      inert={!sidebarOpen}
-    >
-      <button class={styles.newChatBtn} type="button" onclick={handleCreateChat}>
+    <aside id="chat-sidebar" class={styles.sidebar} inert={!sidebarOpen}>
+      <button
+        class={styles.newChatBtn}
+        type="button"
+        onclick={handleCreateChat}
+      >
         + New chat
       </button>
       <div class={styles.chatList}>
         {#each chats as chat}
-          <div class={`${styles.chatItem} ${chat.sessionId === activeSessionId ? styles.chatItemActive : ""}`}>
+          <div
+            class={`${styles.chatItem} ${chat.sessionId === activeSessionId ? styles.chatItemActive : ""}`}
+          >
             <button
               class={styles.chatSwitchBtn}
               type="button"
-              aria-current={chat.sessionId === activeSessionId ? "true" : undefined}
+              aria-current={chat.sessionId === activeSessionId
+                ? "true"
+                : undefined}
               onclick={() => {
                 chatLimitNotice = "";
                 activeSessionId = chat.sessionId;
@@ -233,6 +301,62 @@
           </div>
         {/each}
       </div>
+      <div class={styles.themeRow}>
+        <span class={styles.themeLabel} id="theme-toggle-label">Theme</span>
+        <div
+          class={styles.themeToggle}
+          role="group"
+          aria-labelledby="theme-toggle-label"
+        >
+          <button
+            type="button"
+            class={`${styles.themeOption} ${themePreference === "light" ? styles.themeOptionActive : ""}`}
+            aria-pressed={themePreference === "light"}
+            title="Light theme"
+            onclick={() => setThemePreference("light")}
+          >
+            <span class={styles.srOnly}>Light theme</span>
+            <svg
+              class={styles.themeIcon}
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="4"></circle>
+              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+            </svg>
+          </button>
+          <button
+            type="button"
+            class={`${styles.themeOption} ${themePreference === "dark" ? styles.themeOptionActive : ""}`}
+            aria-pressed={themePreference === "dark"}
+            title="Dark theme"
+            onclick={() => setThemePreference("dark")}
+          >
+            <span class={styles.srOnly}>Dark theme</span>
+            <svg
+              class={styles.themeIcon}
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
     </aside>
 
     <div class={styles.mainColumn}>
@@ -265,8 +389,8 @@
             <line x1="14" y1="16" x2="21" y2="16"></line>
           </svg>
         </button>
-        <span class={styles.logo}>&#9670;</span>
-        <h1 class={styles.title}>Denis Ngugi Gathondu's Chatbot</h1>
+        <span class={styles.logo}>🤖</span>
+        <h1 class={styles.title}>Denis Ngugi Gathondu</h1>
       </header>
 
       <div class={styles.chatPane}>
@@ -277,7 +401,10 @@
                 >{msg.role === "user" ? "You" : "Denis"}</span
               >
               {#if msg.streaming && !msg.content.trim()}
-                <div class={styles.typingIndicator} aria-label="Denis is typing">
+                <div
+                  class={styles.typingIndicator}
+                  aria-label="Denis is typing"
+                >
                   <span class={styles.typingDot}></span>
                   <span class={styles.typingDot}></span>
                   <span class={styles.typingDot}></span>
