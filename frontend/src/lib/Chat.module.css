@@ -359,7 +359,7 @@
 .title {
   font-family: var(--font-prose);
   font-size: 17px;
-  font-weight: 600;
+  font-weight: 500;
   margin: 0;
   letter-spacing: -0.02em;
   color: var(--text-primary);

@@ -1,101 +1,46 @@
 <script lang="ts">
   import styles from "./Chat.module.css";
   import {
+    applyDocumentTheme,
+    bootstrapChatState,
+    buildWelcomeMessages,
     createSubmitMessage,
-    createChat,
-    deleteSessionOnServer,
+    DEFAULT_INPUT_PLACEHOLDER,
     fetchHistory,
     fetchSuggestedPlaceholder,
-    getActiveSessionId,
+    getFallbackPlaceholder,
     getKnownSessionIds,
     handleEnterToSend,
-    loadChatIndex,
-    removeChat,
+    loadSidebarOpen,
+    loadThemePreference,
+    readSystemPrefersDark,
+    removeChatSession,
     renderMarkdown,
     saveChatIndex,
+    saveSidebarOpen,
+    saveThemePreference,
     setActiveSessionId,
+    subscribePrefersColorScheme,
     touchChat,
-    MAX_CHATS,
+    tryCreateChat,
     type ChatMeta,
     type Message,
+    type ThemePreference,
   } from "./chat-logic";
 
-  const SIDEBAR_OPEN_KEY = "dng_sidebar_open_v1";
-  const THEME_KEY = "dng_theme_v1";
-
-  type ThemePreference = "light" | "dark" | "system";
-
-  function readSystemPrefersDark(): boolean {
-    return (
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-color-scheme: dark)").matches
-    );
-  }
-
-  function loadSidebarOpen(): boolean {
-    if (typeof localStorage === "undefined") {
-      return true;
-    }
-    const raw = localStorage.getItem(SIDEBAR_OPEN_KEY);
-    if (raw === null) {
-      return true;
-    }
-    return raw === "1";
-  }
-
-  function loadThemePreference(): ThemePreference {
-    if (typeof localStorage === "undefined") {
-      return "system";
-    }
-    const raw = localStorage.getItem(THEME_KEY);
-    if (raw === "light" || raw === "dark") {
-      return raw;
-    }
-    return "system";
-  }
-
-  const WELCOME_CONTENT =
-    "Hello, and welcome - I'm Denis.\n\nI'd love to hear a bit about what you're looking for, whether that's a full-time role, contract support, or help solving a specific technical challenge. If you're comfortable, feel free to share your name as well.";
-
-  function buildWelcomeMessages(): Message[] {
-    return [{ role: "assistant", content: WELCOME_CONTENT }];
-  }
-
-  const storedChats = loadChatIndex();
-  const initialChatList: ChatMeta[] =
-    storedChats.length > 0
-      ? storedChats
-      : [
-          {
-            sessionId: crypto.randomUUID(),
-            title: "New conversation",
-            updatedAt: Date.now(),
-          },
-        ];
-  const storedActiveSession = getActiveSessionId();
-  const initialActiveSession =
-    storedActiveSession &&
-    initialChatList.some((chat) => chat.sessionId === storedActiveSession)
-      ? storedActiveSession
-      : initialChatList[0].sessionId;
-
-  saveChatIndex(initialChatList);
-  setActiveSessionId(initialActiveSession);
-
-  let chats = $state<ChatMeta[]>(initialChatList);
-  let activeSessionId = $state(initialActiveSession);
+  const boot = bootstrapChatState();
+  let chats = $state<ChatMeta[]>(boot.chats);
+  let activeSessionId = $state(boot.activeSessionId);
 
   let messages = $state<Message[]>(buildWelcomeMessages());
   let input = $state("");
   let isStreaming = $state(false);
   let threadEl = $state<HTMLElement | null>(null);
-  let inputPlaceholder = $state(
-    "Share a quick note about your role or hiring need...",
-  );
+  let inputPlaceholder = $state(DEFAULT_INPUT_PLACEHOLDER);
   let placeholderInitialized = $state(false);
   let chatLimitNotice = $state("");
   let sidebarOpen = $state(loadSidebarOpen());
-  let themePreference = $state(loadThemePreference());
+  let themePreference = $state<ThemePreference>(loadThemePreference());
   let systemPrefersDark = $state(readSystemPrefersDark());
 
   const effectiveDark = $derived(
@@ -107,57 +52,28 @@
 
   function toggleSidebar(): void {
     sidebarOpen = !sidebarOpen;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(SIDEBAR_OPEN_KEY, sidebarOpen ? "1" : "0");
-    }
+    saveSidebarOpen(sidebarOpen);
   }
 
   function setThemePreference(next: "light" | "dark"): void {
     themePreference = next;
-    if (typeof localStorage !== "undefined") {
-      localStorage.setItem(THEME_KEY, next);
-    }
+    saveThemePreference(next);
   }
 
   $effect(() => {
-    if (typeof window === "undefined") {
-      return;
-    }
-    const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    const onChange = (): void => {
-      systemPrefersDark = mq.matches;
-    };
-    onChange();
-    mq.addEventListener("change", onChange);
-    return () => {
-      mq.removeEventListener("change", onChange);
-    };
+    return subscribePrefersColorScheme((dark) => {
+      systemPrefersDark = dark;
+    });
   });
 
   $effect(() => {
-    if (typeof document === "undefined") {
-      return;
-    }
-    const root = document.documentElement;
-    if (effectiveDark) {
-      root.dataset.theme = "dark";
-    } else {
-      delete root.dataset.theme;
-    }
+    applyDocumentTheme(effectiveDark);
   });
-
-  function getFallbackPlaceholder(): string {
-    const hasUserMessage = messages.some((message) => message.role === "user");
-    if (hasUserMessage) {
-      return "Share more context, goals, or questions...";
-    }
-    return "Share a quick note about your role or hiring need...";
-  }
 
   async function refreshPlaceholder(): Promise<void> {
     inputPlaceholder = await fetchSuggestedPlaceholder(
       activeSessionId,
-      getFallbackPlaceholder(),
+      getFallbackPlaceholder(messages),
     );
   }
 
@@ -198,32 +114,23 @@
   }
 
   function handleCreateChat(): void {
-    const created = createChat(chats);
-    if (!created.ok) {
-      chatLimitNotice = `You can only keep ${MAX_CHATS} chats. Delete one to create another.`;
+    const outcome = tryCreateChat(chats);
+    if (!outcome.ok) {
+      chatLimitNotice = outcome.notice;
       return;
     }
     chatLimitNotice = "";
-    persistChats(created.chats);
-    activeSessionId = created.created.sessionId;
+    chats = outcome.chats;
+    activeSessionId = outcome.newActiveSessionId;
     input = "";
     messages = buildWelcomeMessages();
   }
 
   async function handleDeleteChat(sessionId: string): Promise<void> {
-    await deleteSessionOnServer(sessionId);
-    const remaining = removeChat(chats, sessionId);
-    if (remaining.length === 0) {
-      const fresh = createChat([]);
-      if (fresh.ok) {
-        persistChats(fresh.chats);
-        activeSessionId = fresh.created.sessionId;
-      }
-      return;
-    }
-    persistChats(remaining);
-    if (sessionId === activeSessionId) {
-      activeSessionId = remaining[0].sessionId;
+    const result = await removeChatSession(sessionId, chats, activeSessionId);
+    chats = result.chats;
+    activeSessionId = result.activeSessionId;
+    if (result.clearInput) {
       input = "";
     }
   }
@@ -329,7 +236,9 @@
               aria-hidden="true"
             >
               <circle cx="12" cy="12" r="4"></circle>
-              <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path>
+              <path
+                d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"
+              ></path>
             </svg>
           </button>
           <button
@@ -389,7 +298,6 @@
             <line x1="14" y1="16" x2="21" y2="16"></line>
           </svg>
         </button>
-        <span class={styles.logo}>🤖</span>
         <h1 class={styles.title}>Denis Ngugi Gathondu</h1>
       </header>
 

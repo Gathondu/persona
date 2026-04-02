@@ -322,3 +322,192 @@ export async function deleteSessionOnServer(sessionId: string): Promise<boolean>
     return false;
   }
 }
+
+// --- Sidebar / theme (localStorage + document) ---
+
+export const SIDEBAR_OPEN_KEY = "dng_sidebar_open_v1";
+export const THEME_KEY = "dng_theme_v1";
+
+export type ThemePreference = "light" | "dark" | "system";
+
+export function readSystemPrefersDark(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    window.matchMedia("(prefers-color-scheme: dark)").matches
+  );
+}
+
+export function loadSidebarOpen(): boolean {
+  if (typeof localStorage === "undefined") {
+    return true;
+  }
+  const raw = localStorage.getItem(SIDEBAR_OPEN_KEY);
+  if (raw === null) {
+    return true;
+  }
+  return raw === "1";
+}
+
+export function saveSidebarOpen(open: boolean): void {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  localStorage.setItem(SIDEBAR_OPEN_KEY, open ? "1" : "0");
+}
+
+export function loadThemePreference(): ThemePreference {
+  if (typeof localStorage === "undefined") {
+    return "system";
+  }
+  const raw = localStorage.getItem(THEME_KEY);
+  if (raw === "light" || raw === "dark") {
+    return raw;
+  }
+  return "system";
+}
+
+export function saveThemePreference(next: "light" | "dark"): void {
+  if (typeof localStorage === "undefined") {
+    return;
+  }
+  localStorage.setItem(THEME_KEY, next);
+}
+
+/** Subscribe to OS color scheme; calls listener immediately; returns unsubscribe. */
+export function subscribePrefersColorScheme(
+  listener: (prefersDark: boolean) => void,
+): () => void {
+  if (typeof window === "undefined") {
+    return () => {};
+  }
+  const mq = window.matchMedia("(prefers-color-scheme: dark)");
+  const onChange = (): void => {
+    listener(mq.matches);
+  };
+  onChange();
+  mq.addEventListener("change", onChange);
+  return () => {
+    mq.removeEventListener("change", onChange);
+  };
+}
+
+export function applyDocumentTheme(isDark: boolean): void {
+  if (typeof document === "undefined") {
+    return;
+  }
+  const root = document.documentElement;
+  if (isDark) {
+    root.dataset.theme = "dark";
+  } else {
+    delete root.dataset.theme;
+  }
+}
+
+// --- Welcome copy & placeholders ---
+
+export const WELCOME_CONTENT =
+  "Hello, and welcome - I'm Denis.\n\nI'd love to hear a bit about what you're looking for, whether that's a full-time role, contract support, or help solving a specific technical challenge. If you're comfortable, feel free to share your name as well.";
+
+export function buildWelcomeMessages(): Message[] {
+  return [{ role: "assistant", content: WELCOME_CONTENT }];
+}
+
+export const DEFAULT_INPUT_PLACEHOLDER =
+  "Share a quick note about your role or hiring need...";
+
+export function getFallbackPlaceholder(messages: Message[]): string {
+  const hasUserMessage = messages.some((message) => message.role === "user");
+  if (hasUserMessage) {
+    return "Share more context, goals, or questions...";
+  }
+  return DEFAULT_INPUT_PLACEHOLDER;
+}
+
+// --- Initial session list (persist + return for UI state) ---
+
+export function bootstrapChatState(): { chats: ChatMeta[]; activeSessionId: string } {
+  const storedChats = loadChatIndex();
+  const initialChatList: ChatMeta[] =
+    storedChats.length > 0
+      ? storedChats
+      : [
+          {
+            sessionId: crypto.randomUUID(),
+            title: "New conversation",
+            updatedAt: Date.now(),
+          },
+        ];
+  const storedActiveSession = getActiveSessionId();
+  const initialActiveSession =
+    storedActiveSession &&
+    initialChatList.some((chat) => chat.sessionId === storedActiveSession)
+      ? storedActiveSession
+      : initialChatList[0].sessionId;
+
+  saveChatIndex(initialChatList);
+  setActiveSessionId(initialActiveSession);
+
+  return { chats: initialChatList, activeSessionId: initialActiveSession };
+}
+
+// --- Create / delete chat flows ---
+
+export type CreateChatOutcome =
+  | { ok: false; notice: string }
+  | { ok: true; chats: ChatMeta[]; newActiveSessionId: string };
+
+export function tryCreateChat(currentChats: ChatMeta[]): CreateChatOutcome {
+  const created = createChat(currentChats);
+  if (!created.ok) {
+    return {
+      ok: false,
+      notice: `You can only keep ${MAX_CHATS} chats. Delete one to create another.`,
+    };
+  }
+  saveChatIndex(created.chats);
+  setActiveSessionId(created.created.sessionId);
+  return {
+    ok: true,
+    chats: created.chats,
+    newActiveSessionId: created.created.sessionId,
+  };
+}
+
+export interface RemoveChatSessionResult {
+  chats: ChatMeta[];
+  activeSessionId: string;
+  clearInput: boolean;
+}
+
+export async function removeChatSession(
+  sessionId: string,
+  chats: ChatMeta[],
+  activeSessionId: string,
+): Promise<RemoveChatSessionResult> {
+  await deleteSessionOnServer(sessionId);
+  const remaining = removeChat(chats, sessionId);
+  if (remaining.length === 0) {
+    const fresh = createChat([]);
+    if (!fresh.ok) {
+      return { chats: [], activeSessionId, clearInput: true };
+    }
+    saveChatIndex(fresh.chats);
+    setActiveSessionId(fresh.created.sessionId);
+    return {
+      chats: fresh.chats,
+      activeSessionId: fresh.created.sessionId,
+      clearInput: true,
+    };
+  }
+  saveChatIndex(remaining);
+  const nextActive =
+    sessionId === activeSessionId ? remaining[0].sessionId : activeSessionId;
+  if (nextActive !== activeSessionId) {
+    setActiveSessionId(nextActive);
+  }
+  return {
+    chats: remaining,
+    activeSessionId: nextActive,
+    clearInput: sessionId === activeSessionId,
+  };
+}
