@@ -21,66 +21,60 @@ body {
 }
 
 :root {
-  --bg-primary: #f7f9fb;
+  /* Backgrounds */
+  --bg-primary: #fafaf9;
   --bg-secondary: #ffffff;
-  --bg-accent: #eef3f7;
+  --bg-accent: #f5f5f4;
 
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #94a3b8;
+  /* Text */
+  --text-primary: #1c1917;
+  --text-secondary: #57534e;
+  --text-muted: #a8a29e;
 
-  --accent-primary: #0ea5a4;
-  --accent-hover: #0c8f8e;
-  --accent-soft: #ccfbf1;
+  /* Accent / Buttons / Highlights */
+  --accent-primary: #f59e0b;
+  --accent-hover: #d97706;
+  --accent-soft: #fef3c7;
 
-  --border-subtle: #e2e8f0;
-  --border-strong: #cbd5e1;
+  /* Borders */
+  --border-subtle: #e7e5e4;
+  --border-strong: #d6d3d1;
 
-  --bubble-user: #0ea5a4;
-  --bubble-user-text: #ffffff;
-
-  --bubble-bot: #ffffff;
-  --bubble-bot-text: #0f172a;
-
-  --success: #16a34a;
-  --warning: #f59e0b;
-  --error: #dc2626;
-
-  --accent-gradient: linear-gradient(135deg, #0ea5a4, #22d3ee);
-  --typing-dot: var(--accent-primary);
+  /* Chat Bubbles */
+  --bubble-user: #292524;
+  --bubble-user-text: #fafaf9;
+  --bubble-bot: #fef3c7;
+  --bubble-bot-text: #78350f;
 }
 
 :root[data-theme="dark"] {
-  --bg-primary: #0b1220;
-  --bg-secondary: #111827;
-  --bg-accent: #1f2937;
+  /* Backgrounds */
+  --bg-primary: #0c0a09;
+  --bg-secondary: #1c1917;
+  --bg-accent: #292524;
 
-  --text-primary: #e5e7eb;
-  --text-secondary: #9ca3af;
-  --text-muted: #6b7280;
+  /* Text */
+  --text-primary: #fafaf9;
+  --text-secondary: #d6d3d1;
+  --text-muted: #a8a29e;
 
-  --accent-primary: #14b8a6;
-  --accent-hover: #0ea5a4;
-  --accent-soft: #042f2e;
+  /* Accent / Buttons / Highlights */
+  --accent-primary: #fbbf24;
+  --accent-hover: #f59e0b;
+  --accent-soft: #451a03;
 
-  --border-subtle: #1f2937;
-  --border-strong: #374151;
+  /* Borders */
+  --border-subtle: #292524;
+  --border-strong: #44403c;
 
-  --bubble-user: #14b8a6;
-  --bubble-user-text: #022c2c;
-
-  --bubble-bot: #111827;
-  --bubble-bot-text: #e5e7eb;
-
-  --success: #22c55e;
-  --warning: #fbbf24;
-  --error: #ef4444;
-
-  --accent-gradient: linear-gradient(135deg, #14b8a6, #22d3ee);
-  --typing-dot: var(--accent-primary);
+  /* Chat Bubbles */
+  --bubble-user: #fbbf24;
+  --bubble-user-text: #1c1917;
+  --bubble-bot: #1c1917;
+  --bubble-bot-text: #fafaf9;
 }
 
 ::selection {
   background: var(--accent-primary);
-  color: #ffffff;
+  color: var(--bg-secondary);
 }
