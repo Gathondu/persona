@@ -11,7 +11,7 @@ pinned: false
 # Persona
 
 A full-stack LLM agent that responds in your voice with your expertise.  
-**Backend:** FastAPI + SQLite (persistent chat history) + OpenRouter  
+**Backend:** FastAPI + SQLite (persistent chat history) + Cerebras (primary) + OpenRouter (fallback)  
 **Frontend:** Svelte 5 (Runes) + Vite
 
 ---
@@ -21,6 +21,7 @@ A full-stack LLM agent that responds in your voice with your expertise.
 ```
 my-agent/
 ├── backend/          FastAPI app (main.py, agent.py, memory.py)
+│   ├── llm_clients.py  # Cerebras + OpenRouter client factories
 │   └── Dockerfile    Multi-stage build (frontend → backend)
 ├── frontend/         Svelte 5 SPA
 ├── docker-compose.yml
@@ -50,7 +51,7 @@ uv venv
 source .venv/bin/activate
 
 uv sync
-cp .env.example .env   # add your OPENROUTER_API_KEY
+cp .env.example .env   # set CEREBRAS_* (primary) and OPENROUTER_* (fallback)
 uv run uvicorn main:app --reload
 ```
 
@@ -88,7 +89,9 @@ docker compose --profile dev up     # + Vite dev server on :5173
 Create `backend/.env`:
 
 ```dotenv
-OPENROUTER_API_KEY=sk-or-...
+CEREBRAS_API_KEY=...                           # primary; omit to use OpenRouter only
+CEREBRAS_MODEL=gpt-oss-120b                    # optional override
+OPENROUTER_API_KEY=sk-or-...                   # required fallback when Cerebras fails
 OPENROUTER_MODEL=anthropic/claude-3.5-sonnet   # optional override
 APP_URL=https://your-hf-space-url              # optional, for HTTP-Referer header
 ```
@@ -114,7 +117,7 @@ using their tone, expertise in [domains], and writing style.
 1. Create a new Space → **Docker** SDK, port **7860**.
 2. Push the contents of `my-agent/` to the Space repo root  
    *(the `README.md` frontmatter above is already correct)*.
-3. Add `OPENROUTER_API_KEY` in **Settings → Repository secrets**.
+3. Add `CEREBRAS_API_KEY` (primary) and `OPENROUTER_API_KEY` (fallback) in **Settings → Repository secrets**.
 4. HF Spaces will run `docker build -f Dockerfile .` from the root —  
    rename/copy `backend/Dockerfile` to the repo root, or add a root-level  
    `Dockerfile` that delegates to it.

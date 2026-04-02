@@ -1,30 +1,30 @@
 from __future__ import annotations
 
+import logging
 import math
-import os
 import re
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from hashlib import sha256
 
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
 from openai.types.chat import ChatCompletionMessageParam
 
+from llm_clients import (
+    create_cerebras_client,
+    create_openrouter_client,
+    get_cerebras_model,
+    get_openrouter_model,
+)
 from prompt_templates import SYSTEM_PROMPT
 
 load_dotenv(override=True)
 
-_client = AsyncOpenAI(
-    api_key=os.environ["OPENROUTER_API_KEY"],
-    base_url="https://openrouter.ai/api/v1",
-    default_headers={
-        "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
-        "X-Title": "DNG",
-    },
-)
+logger = logging.getLogger(__name__)
 
-MODEL = os.getenv("OPENROUTER_MODEL", "openai/gpt-5.4-nano")
+_cerebras_client = create_cerebras_client()
+_openrouter_client = create_openrouter_client()
+
 PLACEHOLDER_FALLBACK = "Share more context, goals, or questions..."
 EMBEDDING_SIZE = 128
 
@@ -36,30 +36,86 @@ class ProfileMatch:
     score: float
 
 
-async def stream_response(
+def _with_system_prompt(
     messages: list[ChatCompletionMessageParam],
-) -> AsyncIterator[str]:
-    """Stream token chunks from the LLM via OpenRouter."""
+) -> list[ChatCompletionMessageParam]:
     full_messages: list[ChatCompletionMessageParam] = []
     if SYSTEM_PROMPT:
         full_messages.append({"role": "system", "content": SYSTEM_PROMPT})
     full_messages.extend(messages)
+    return full_messages
 
-    stream = await _client.chat.completions.create(
-        model=MODEL,
+
+async def _stream_openrouter(
+    full_messages: list[ChatCompletionMessageParam],
+) -> AsyncIterator[str]:
+    stream = await _openrouter_client.chat.completions.create(
+        model=get_openrouter_model(),
         messages=full_messages,
         stream=True,
     )
     async for chunk in stream:
-        delta = chunk.choices[0].delta
+        choice = chunk.choices[0]
+        delta = choice.delta
         if delta.content is not None:
             yield delta.content
+
+
+async def _stream_cerebras(
+    full_messages: list[ChatCompletionMessageParam],
+) -> AsyncIterator[str]:
+    if _cerebras_client is None:
+        raise RuntimeError("Cerebras client not configured")
+    stream = await _cerebras_client.chat.completions.create(
+        model=get_cerebras_model(),
+        messages=full_messages,
+        stream=True,
+    )
+    async for chunk in stream:
+        choice = chunk.choices[0]
+        delta = choice.delta
+        if delta.content is not None:
+            yield delta.content
+
+
+async def stream_response(
+    messages: list[ChatCompletionMessageParam],
+) -> AsyncIterator[str]:
+    """Stream token chunks: Cerebras first, OpenRouter if Cerebras fails before any token."""
+    full_messages = _with_system_prompt(messages)
+
+    if _cerebras_client is None:
+        async for token in _stream_openrouter(full_messages):
+            yield token
+        return
+
+    emitted = False
+    try:
+        async for token in _stream_cerebras(full_messages):
+            emitted = True
+            yield token
+    except Exception:
+        if emitted:
+            raise
+        logger.warning(
+            "Cerebras streaming failed before first token; falling back to OpenRouter",
+            exc_info=True,
+        )
+        async for token in _stream_openrouter(full_messages):
+            yield token
+
+
+def _normalize_placeholder_text(content: str) -> str:
+    text = content.strip()
+    if not text:
+        return PLACEHOLDER_FALLBACK
+    return text.replace("\n", " ")[:80]
 
 
 async def generate_placeholder(
     messages: list[ChatCompletionMessageParam],
 ) -> str:
-    """Generate a short, context-aware input placeholder."""
+    """Generate a short, context-aware input placeholder (Cerebras, then OpenRouter)."""
     placeholder_messages: list[ChatCompletionMessageParam] = [
         {
             "role": "system",
@@ -78,16 +134,28 @@ async def generate_placeholder(
         }
     )
 
-    response = await _client.chat.completions.create(
-        model=MODEL,
+    if _cerebras_client is not None:
+        try:
+            response = await _cerebras_client.chat.completions.create(
+                model=get_cerebras_model(),
+                messages=placeholder_messages,
+                stream=False,
+            )
+            content = response.choices[0].message.content or ""
+            return _normalize_placeholder_text(content)
+        except Exception:
+            logger.warning(
+                "Cerebras placeholder generation failed; falling back to OpenRouter",
+                exc_info=True,
+            )
+
+    response = await _openrouter_client.chat.completions.create(
+        model=get_openrouter_model(),
         messages=placeholder_messages,
         stream=False,
     )
     content = response.choices[0].message.content or ""
-    text = content.strip()
-    if not text:
-        return PLACEHOLDER_FALLBACK
-    return text.replace("\n", " ")[:80]
+    return _normalize_placeholder_text(content)
 
 
 def embed_text(text: str) -> list[float]:
