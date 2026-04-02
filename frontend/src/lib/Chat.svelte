@@ -115,6 +115,19 @@
     })();
   });
 
+  $effect(() => {
+    const text = chatLimitNotice;
+    if (!text) {
+      return;
+    }
+    const handle = setTimeout(() => {
+      chatLimitNotice = "";
+    }, 2000);
+    return () => {
+      clearTimeout(handle);
+    };
+  });
+
   function persistChats(nextChats: ChatMeta[]): void {
     chats = nextChats;
     saveChatIndex(nextChats);
@@ -179,9 +192,6 @@
       <button class={styles.newChatBtn} type="button" onclick={handleCreateChat}>
         + New chat
       </button>
-      {#if chatLimitNotice}
-        <p class={styles.limitNotice}>{chatLimitNotice}</p>
-      {/if}
       <div class={styles.chatList}>
         {#each chats as chat}
           <div class={`${styles.chatItem} ${chat.sessionId === activeSessionId ? styles.chatItemActive : ""}`}>
@@ -321,4 +331,12 @@
       </div>
     </div>
   </div>
+
+  {#if chatLimitNotice}
+    <div class={styles.toastHost}>
+      <p class={styles.toast} role="status" aria-live="polite">
+        {chatLimitNotice}
+      </p>
+    </div>
+  {/if}
 </div>
