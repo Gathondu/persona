@@ -406,7 +406,7 @@ export function applyDocumentTheme(isDark: boolean): void {
 // --- Welcome copy & placeholders ---
 
 export const WELCOME_CONTENT =
-  "Hello, and welcome - I'm Denis.\n\nI'd love to hear a bit about what you're looking for, whether that's a full-time role, contract support, or help solving a specific technical challenge. If you're comfortable, feel free to share your name as well.";
+  "**Hello, and welcome!**<br><br>I'm ***Denis***—software engineer by day, overthinker by night, and apparently a chatbot now, which is either very on-brand or a cry for help. I haven't decided yet.<br><br>Tell me what you're working on. I'll think about it far more than is strictly necessary, and then we'll figure it out together."
 
 export function buildWelcomeMessages(): Message[] {
   return [{ role: "assistant", content: WELCOME_CONTENT }];
