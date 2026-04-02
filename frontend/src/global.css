@@ -18,63 +18,86 @@ body {
   -moz-osx-font-smoothing: grayscale;
   background: var(--bg-primary);
   color: var(--text-primary);
+  font-family: var(--font-ui);
 }
 
 :root {
-  /* Backgrounds */
-  --bg-primary: #fafaf9;
+  /* Typography — use via font-family: var(--font-ui) or var(--font-prose) in components */
+  /* Any UI element — inputs, buttons, labels, user bubbles */
+  --font-ui: "DM Sans", sans-serif;
+  /* Bot response bubbles and any headings */
+  --font-prose: "Lora", serif;
+
+  /* Backgrounds — soft paper, slight warmth */
+  --bg-primary: #f7f6f4;
   --bg-secondary: #ffffff;
-  --bg-accent: #f5f5f4;
+  --bg-accent: #f0efed;
 
   /* Text */
   --text-primary: #1c1917;
   --text-secondary: #57534e;
   --text-muted: #a8a29e;
 
-  /* Accent / Buttons / Highlights */
-  --accent-primary: #f59e0b;
-  --accent-hover: #d97706;
-  --accent-soft: #fef3c7;
+  /* Accent — amber, used sparingly */
+  --accent-primary: #fbbf24;
+  --accent-hover: #f59e0b;
+  --accent-soft: #f5f0e8;
 
   /* Borders */
   --border-subtle: #e7e5e4;
   --border-strong: #d6d3d1;
 
-  /* Chat Bubbles */
-  --bubble-user: #292524;
-  --bubble-user-text: #fafaf9;
-  --bubble-bot: #fef3c7;
-  --bubble-bot-text: #78350f;
+  /* Elevation */
+  --shadow-light: 0 1px 2px rgba(28, 25, 23, 0.06);
+  --shadow-medium: 0 4px 14px rgba(28, 25, 23, 0.08);
+  --shadow-elevated: 0 12px 40px rgba(28, 25, 23, 0.12);
+
+  --focus-ring: 2px solid var(--accent-primary);
+
+  /* Chat bubbles — ink on paper, not black on white */
+  --bubble-user: #3d3530;
+  --bubble-user-text: #f5f0e8;
+  --bubble-bot: #f5f0e8;
+  --bubble-bot-text: #5c4a2a;
+  --bubble-bot-border: #e8dfc8;
 }
 
 :root[data-theme="dark"] {
-  /* Backgrounds */
-  --bg-primary: #0c0a09;
-  --bg-secondary: #1c1917;
-  --bg-accent: #292524;
+  /* Backgrounds — warm near-black, lamplight depth */
+  --bg-primary: #161310;
+  --bg-secondary: #1f1c18;
+  --bg-accent: #2b2720;
 
   /* Text */
-  --text-primary: #fafaf9;
+  --text-primary: #f0e6d0;
   --text-secondary: #d6d3d1;
-  --text-muted: #a8a29e;
+  --text-muted: #57534e;
 
-  /* Accent / Buttons / Highlights */
-  --accent-primary: #fbbf24;
+  /* Accent — muted on canvas, brightens on hover */
+  --accent-primary: #ca8a04;
   --accent-hover: #f59e0b;
-  --accent-soft: #451a03;
+  --accent-soft: #2b2318;
 
-  /* Borders */
-  --border-subtle: #292524;
-  --border-strong: #44403c;
+  /* Borders — quiet chrome lines */
+  --border-subtle: #353230;
+  --border-strong: #403c39;
 
-  /* Chat Bubbles */
-  --bubble-user: #fbbf24;
-  --bubble-user-text: #1c1917;
-  --bubble-bot: #1c1917;
-  --bubble-bot-text: #fafaf9;
+  /* Elevation — deep, soft pools */
+  --shadow-light: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --shadow-medium: 0 6px 20px rgba(0, 0, 0, 0.5);
+  --shadow-elevated: 0 16px 48px rgba(0, 0, 0, 0.55);
+
+  --focus-ring: 2px solid var(--accent-primary);
+
+  /* Chat bubbles — candlelight, not spotlight */
+  --bubble-user: #2e2720;
+  --bubble-user-text: #f0e6d0;
+  --bubble-bot: #1f1c18;
+  --bubble-bot-text: #c9b99a;
+  --bubble-bot-border: #353230;
 }
 
 ::selection {
   background: var(--accent-primary);
-  color: var(--bg-secondary);
+  color: var(--text-primary);
 }

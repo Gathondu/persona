@@ -3,7 +3,6 @@
   --radius: 12px;
   --radius-sm: 6px;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
-  --font-sans: "Inter", system-ui, sans-serif;
   --transition: 0.2s ease;
   --sidebar-w: 240px;
   --transition-panel: 0.22s ease;
@@ -32,7 +31,7 @@
   height: 100dvh;
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-ui);
 }
 
 .layout {
@@ -94,6 +93,7 @@
 }
 
 .newChatBtn {
+  font-family: var(--font-ui);
   border: 1px solid var(--border-subtle);
   background: transparent;
   color: var(--text-primary);
@@ -101,11 +101,17 @@
   padding: 8px 10px;
   text-align: left;
   cursor: pointer;
+  box-shadow: var(--shadow-light);
 }
 
 .newChatBtn:hover {
   background: var(--bg-accent);
   border-color: var(--border-subtle);
+}
+
+.newChatBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .chatList {
@@ -127,6 +133,7 @@
 }
 
 .themeLabel {
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -147,6 +154,7 @@
   margin: 0;
   padding: 0;
   min-height: 38px;
+  font-family: var(--font-ui);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   background: transparent;
@@ -168,7 +176,7 @@
 }
 
 .themeOption:focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: var(--focus-ring);
   outline-offset: 2px;
 }
 
@@ -185,6 +193,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   background: transparent;
+  box-shadow: var(--shadow-light);
 }
 
 .chatItem:not(.chatItemActive):hover {
@@ -208,7 +217,13 @@
   text-align: left;
   padding: 8px 8px;
   cursor: pointer;
+  font-family: var(--font-ui);
   font-size: 13px;
+}
+
+.chatSwitchBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .chatItemActive .chatSwitchBtn {
@@ -240,12 +255,18 @@
   border-radius: 5px;
   background: transparent;
   color: var(--text-secondary);
+  font-family: var(--font-ui);
   cursor: pointer;
 }
 
 .chatDeleteBtn:hover {
   color: var(--accent-hover);
   background: color-mix(in srgb, var(--accent-hover) 12%, transparent);
+}
+
+.chatDeleteBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .toastHost {
@@ -268,6 +289,7 @@
   border: 1px solid var(--border-subtle);
   background: var(--bg-secondary);
   color: var(--accent-hover);
+  font-family: var(--font-ui);
   font-size: 13px;
   line-height: 1.45;
   opacity: 0.8;
@@ -295,6 +317,7 @@
   padding: 14px 16px 14px 12px;
   border-bottom: 1px solid var(--border-subtle);
   background: var(--bg-secondary);
+  box-shadow: var(--shadow-light);
   flex-shrink: 0;
 }
 
@@ -307,6 +330,7 @@
   height: 40px;
   margin: 0;
   padding: 0;
+  font-family: var(--font-ui);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
   background: var(--bg-accent);
@@ -322,16 +346,18 @@
 }
 
 .sidebarToggle:focus-visible {
-  outline: 2px solid var(--accent-primary);
+  outline: var(--focus-ring);
   outline-offset: 2px;
 }
 
 .logo {
+  font-family: var(--font-ui);
   color: var(--accent-primary);
   font-size: 20px;
 }
 
 .title {
+  font-family: var(--font-prose);
   font-size: 17px;
   font-weight: 600;
   margin: 0;
@@ -341,6 +367,7 @@
 
 .badge {
   margin-left: auto;
+  font-family: var(--font-ui);
   font-size: 11px;
   font-weight: 500;
   color: var(--bg-secondary);
@@ -348,6 +375,7 @@
   border: 1px solid var(--accent-primary);
   padding: 3px 8px;
   border-radius: 20px;
+  box-shadow: var(--shadow-light);
 }
 
 /* ─── Thread ─────────────────────────────────────────────── */
@@ -408,12 +436,14 @@
   border-radius: var(--radius);
   border: 1px solid var(--border-subtle);
   line-height: 1.45;
+  box-shadow: var(--shadow-light);
   animation: fadeUp 0.18s ease;
 }
 
 .user {
   align-self: flex-end;
   margin-left: auto;
+  font-family: var(--font-ui);
   background: var(--bubble-user);
   border: 1px solid var(--bubble-user);
   border-bottom-right-radius: 4px;
@@ -422,13 +452,15 @@
 .assistant {
   align-self: flex-start;
   margin-right: auto;
+  font-family: var(--font-prose);
   background: var(--bubble-bot);
-  border: 0.5px solid var(--border-subtle);
+  border: 0.5px solid var(--bubble-bot-border, var(--border-subtle));
   border-bottom-left-radius: 4px;
 }
 
 .roleLabel {
   display: block;
+  font-family: var(--font-ui);
   font-size: 10px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -472,6 +504,20 @@
 .markdown :global(h4) {
   margin: 0.55rem 0 0.35rem;
   line-height: 1.3;
+}
+
+.assistant .markdown :global(h1),
+.assistant .markdown :global(h2),
+.assistant .markdown :global(h3),
+.assistant .markdown :global(h4) {
+  font-family: var(--font-prose);
+}
+
+.user .markdown :global(h1),
+.user .markdown :global(h2),
+.user .markdown :global(h3),
+.user .markdown :global(h4) {
+  font-family: var(--font-ui);
 }
 
 .markdown :global(ul),
@@ -639,9 +685,7 @@
   border: 1px solid var(--border-subtle);
   border-radius: calc(var(--radius) + 4px);
   background: var(--bg-secondary);
-  box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.42),
-    0 4px 14px rgba(0, 0, 0, 0.28);
+  box-shadow: var(--shadow-elevated);
   backdrop-filter: blur(12px);
   flex-shrink: 0;
 }
@@ -653,7 +697,7 @@
   border: none;
   border-radius: var(--radius-sm);
   color: var(--text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-ui);
   font-size: 15px;
   line-height: 1.5;
   padding: 10px 8px;
@@ -677,8 +721,7 @@
 .inputBar:focus-within {
   border-color: var(--accent-primary);
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.42),
-    0 4px 14px rgba(0, 0, 0, 0.28),
+    var(--shadow-elevated),
     0 0 0 1px var(--accent-soft);
 }
 
@@ -693,6 +736,7 @@
   width: 40px;
   height: 40px;
   border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
   background: var(--accent-primary);
   border: none;
   color: var(--bg-secondary);
@@ -700,15 +744,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: var(--shadow-light);
   transition:
     background var(--transition),
+    box-shadow var(--transition),
     transform var(--transition);
 }
 
 .sendBtn:hover:not(:disabled) {
-  background: var(--accent-hover);
+  background: var(--accent-gradient);
   color: var(--bg-secondary);
+  box-shadow: var(--shadow-medium);
   transform: translateY(-1px);
+}
+
+.sendBtn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .sendBtn:disabled {
@@ -716,6 +768,7 @@
   color: var(--text-muted);
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 /* ─── Animations ─────────────────────────────────────────── */
