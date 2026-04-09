@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import os
 
-from cerebras.cloud.sdk import AsyncCerebras
-from openai import AsyncOpenAI
+from cerebras.cloud.sdk import AsyncCerebras, Cerebras
+from openai import AsyncOpenAI, OpenAI
 
 # Default models match Cerebras docs / common OpenRouter IDs; override via env.
 _DEFAULT_CEREBRAS_MODEL = "gpt-oss-120b"
@@ -46,8 +46,19 @@ def get_openrouter_model() -> str:
     return os.getenv("OPENROUTER_MODEL", _DEFAULT_OPENROUTER_MODEL).strip()
 
 
-async def check_prompt_against_guardrails(msg: str) -> Tuple(bool, str):
-    client: Union[AsyncCerebras | AsyncOpenAI] = await create_cerebras_client() or create_openrouter_client()
+def check_prompt_against_guardrails(msg: str) -> Tuple(bool, str):
+    cerebras_key = os.getenv("CEREBRAS_API_KEY", "").strip()
+    client = Cerebras(
+        default_headers={
+            "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
+            "X-Title": "DNG",
+        }) if cerebras_key else OpenAI(
+        api_key=os.environ["OPENROUTER_API_KEY"],
+        base_url=os.environ["OPENROUTER_BASE_URL"],
+        default_headers={
+            "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
+            "X-Title": "DNG",
+        })
     response = client.chat.completions.create(
         model=get_openrouter_model() if isinstance(client, AsyncOpenAI) else get_cerebras_model(),
         messages=[
