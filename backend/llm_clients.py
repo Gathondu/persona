@@ -30,7 +30,7 @@ def create_openrouter_client() -> AsyncOpenAI:
     """OpenAI-compatible client pointed at OpenRouter (required for fallback)."""
     return AsyncOpenAI(
         api_key=os.environ["OPENROUTER_API_KEY"],
-        base_url="https://openrouter.ai/api/v1",
+        base_url=os.environ["OPENROUTER_BASE_URL"],
         default_headers={
             "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
             "X-Title": "DNG",
@@ -39,11 +39,8 @@ def create_openrouter_client() -> AsyncOpenAI:
 
 
 def get_cerebras_model() -> str:
-    return os.getenv("CEREBRAS_MODEL", _DEFAULT_CEREBRAS_MODEL).strip() or _DEFAULT_CEREBRAS_MODEL
+    return os.getenv("CEREBRAS_MODEL", _DEFAULT_CEREBRAS_MODEL).strip()
 
 
 def get_openrouter_model() -> str:
-    return (
-        os.getenv("OPENROUTER_MODEL", _DEFAULT_OPENROUTER_MODEL).strip()
-        or _DEFAULT_OPENROUTER_MODEL
-    )
+    return os.getenv("OPENROUTER_MODEL", _DEFAULT_OPENROUTER_MODEL).strip()
