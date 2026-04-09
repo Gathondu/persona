@@ -171,7 +171,7 @@ async def chat(request: ChatRequest) -> StreamingResponse:
 
     proceed, corrected_response = await check_prompt_against_guardrails(request.message.strip())
 
-    async get_corrected_response_stream(response: str) ->  AsyncIterator[str]:
+    async def get_corrected_response_stream(response: str) ->  AsyncIterator[str]:
         yield response
 
     response = _sse_stream(request.session_id, request.message, request.known_session_ids) if proceed else get_corrected_response_stream(corrected_response)
