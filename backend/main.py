@@ -169,9 +169,12 @@ async def chat(request: ChatRequest) -> StreamingResponse:
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    proceed, corrected_response = check_prompt_against_guardrails(request.message.strip())
+    proceed, corrected_response = await check_prompt_against_guardrails(request.message.strip())
 
-    response = _sse_stream(request.session_id, request.message, request.known_session_ids) if proceed else yield corrected_response 
+    async get_corrected_response_stream(response: str) ->  AsyncIterator[str]:
+        yield response
+
+    response = _sse_stream(request.session_id, request.message, request.known_session_ids) if proceed else get_corrected_response_stream(corrected_response)
 
     return StreamingResponse(
         response,
