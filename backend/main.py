@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
@@ -171,13 +172,27 @@ async def chat(request: ChatRequest) -> StreamingResponse:
 
     proceed, corrected_response = check_prompt_against_guardrails(request.message.strip())
 
-    async def get_corrected_response_stream(response: str) ->  AsyncIterator[str]:
-        yield response
+    async def get_corrected_response_stream(response: str) -> AsyncIterator[str]:
+        words = response.split(" ")
 
-    response = _sse_stream(request.session_id, request.message, request.known_session_ids) if proceed else get_corrected_response_stream(corrected_response)
+        for word in words:
+            payload_json = json.dumps({"token": f"{word} "})
+            yield f"data: {payload_json} \n\n"
+            await asyncio.sleep(0.05)
+
+    if not proceed:
+        save_message(request.session_id, "assistant", corrected_response)
+        return StreamingResponse(
+            get_corrected_response_stream(corrected_response),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache",
+                "X-Accel-Buffering": "no",
+            },
+        )
 
     return StreamingResponse(
-        response,
+        _sse_stream(request.session_id, request.message, request.known_session_ids),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
