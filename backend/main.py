@@ -21,7 +21,7 @@ from agent import (
     select_relevant_profile_facts,
     stream_response,
 )
-from llm_client import check_prompt_against_guardrails
+from llm_clients import check_prompt_against_guardrails
 from memory import (
     delete_session,
     get_history,
