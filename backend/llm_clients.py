@@ -46,7 +46,8 @@ def get_openrouter_model() -> str:
     return os.getenv("OPENROUTER_MODEL", _DEFAULT_OPENROUTER_MODEL).strip()
 
 
-async def check_prompt_against_guardrails(msg: str, client: Union[AsyncCerebras | AsyncOpenAI]) -> Tuple(bool, str):
+async def check_prompt_against_guardrails(msg: str) -> Tuple(bool, str):
+    client: Union[AsyncCerebras | AsyncOpenAI] = get_cerebras_model() or get_openrouter_model()
     response = client.chat.completions.create(
         model=get_openrouter_model() if isinstance(client, AsyncOpenAI) else get_cerebras_model(),
         messages=[
