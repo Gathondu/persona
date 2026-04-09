@@ -76,4 +76,5 @@ def check_prompt_against_guardrails(msg: str) -> Tuple(bool, str):
         temperature=0.7,
         max_tokens=20
     )
+    print(response.choices[0].message.content)
     return response.choices[0].message.content
