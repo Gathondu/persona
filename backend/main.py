@@ -21,6 +21,7 @@ from agent import (
     select_relevant_profile_facts,
     stream_response,
 )
+from llm_client import check_prompt_against_guardrails
 from memory import (
     delete_session,
     get_history,
@@ -168,8 +169,12 @@ async def chat(request: ChatRequest) -> StreamingResponse:
     if not request.message.strip():
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
+    proceed, corrected_response = check_prompt_against_guardrails(request.message.strip())
+
+    response = _sse_stream(request.session_id, request.message, request.known_session_ids) if proceed else yield corrected_response 
+
     return StreamingResponse(
-        _sse_stream(request.session_id, request.message, request.known_session_ids),
+        response,
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
