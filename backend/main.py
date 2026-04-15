@@ -22,7 +22,7 @@ from agent import (
     select_relevant_profile_facts,
     stream_response,
 )
-from llm_clients import check_prompt_against_guardrails
+from llm_clients import GUARDRAIL_HISTORY_MAX_MESSAGES, check_prompt_against_guardrails
 from memory import (
     delete_session,
     get_history,
@@ -171,9 +171,12 @@ async def chat(request: ChatRequest) -> StreamingResponse:
     if not msg:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    save_message(request.session_id, "user", msg)
-
-    proceed, corrected_response = check_prompt_against_guardrails(msg)
+    guardrail_history = get_history(
+        request.session_id, limit=GUARDRAIL_HISTORY_MAX_MESSAGES
+    )
+    proceed, corrected_response = check_prompt_against_guardrails(
+        msg, guardrail_history
+    )
 
     async def get_corrected_response_stream(response: str) -> AsyncIterator[str]:
         words = response.split(" ")
@@ -184,6 +187,7 @@ async def chat(request: ChatRequest) -> StreamingResponse:
             await asyncio.sleep(0.05)
 
     if not proceed:
+        save_message(request.session_id, "user", msg)
         save_message(request.session_id, "assistant", corrected_response)
         return StreamingResponse(
             get_corrected_response_stream(corrected_response),
