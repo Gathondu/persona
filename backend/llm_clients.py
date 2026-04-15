@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from typing import cast
 
 from cerebras.cloud.sdk import AsyncCerebras, Cerebras
+from cerebras.cloud.sdk.types.chat import completion_create_params
+from cerebras.cloud.sdk.types.chat.chat_completion import ChatCompletionResponse
 from openai import AsyncOpenAI, OpenAI
+from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field
 
 from prompt_templates import GUARDRAILS_PROMPT
@@ -52,7 +55,6 @@ def get_openrouter_model() -> str:
 
 def check_prompt_against_guardrails(msg: str) -> tuple[bool, str]:
 
-    @dataclass(frozen=True)
     class GuardrailsResponse(BaseModel):
         is_valid: bool = Field(..., description="Whether the message is valid")
         new_response: str | None = Field(
@@ -60,31 +62,53 @@ def check_prompt_against_guardrails(msg: str) -> tuple[bool, str]:
         )
 
     cerebras_key = os.getenv("CEREBRAS_API_KEY", "").strip()
-    client = (
-        Cerebras(
-            default_headers={
-                "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
-                "X-Title": "DNG",
-            }
-        )
-        if cerebras_key
-        else OpenAI(
-            api_key=os.environ["OPENROUTER_API_KEY"],
-            base_url=os.environ["OPENROUTER_BASE_URL"],
-            default_headers={
-                "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
-                "X-Title": "DNG",
-            },
-        )
-    )
-    response = client.chat.completions.parse(
-        model=get_openrouter_model() if isinstance(client, OpenAI) else get_cerebras_model(),
-        messages=[
+    common_headers = {
+        "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
+        "X-Title": "DNG",
+    }
+    if cerebras_key:
+        cerebras_client = Cerebras(default_headers=common_headers)
+        cerebras_messages: list[completion_create_params.Message] = [
             {"role": "system", "content": GUARDRAILS_PROMPT},
             {"role": "user", "content": msg},
-        ],
-        temperature=0.4,
-        response_format=GuardrailsResponse,
-    )
-    guard_response = GuardrailsResponse.model_validate_json(response.choices[0].message.content)
-    return guard_response.is_valid, guard_response.new_response
+        ]
+        response_format: completion_create_params.ResponseFormat = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "GuardrailsResponse",
+                "schema": GuardrailsResponse.model_json_schema(),
+                "strict": True,
+            },
+        }
+        cerebras_out = cerebras_client.chat.completions.create(
+            model=get_cerebras_model(),
+            messages=cerebras_messages,
+            temperature=0.4,
+            response_format=response_format,
+            stream=False,
+        )
+        cerebras_response = cast(ChatCompletionResponse, cerebras_out)
+        raw = cerebras_response.choices[0].message.content
+    else:
+        openrouter_client = OpenAI(
+            api_key=os.environ["OPENROUTER_API_KEY"],
+            base_url=os.environ["OPENROUTER_BASE_URL"],
+            default_headers=common_headers,
+        )
+        openrouter_messages: list[ChatCompletionMessageParam] = [
+            {"role": "system", "content": GUARDRAILS_PROMPT},
+            {"role": "user", "content": msg},
+        ]
+        openrouter_response = openrouter_client.chat.completions.parse(
+            model=get_openrouter_model(),
+            messages=openrouter_messages,
+            temperature=0.4,
+            response_format=GuardrailsResponse,
+        )
+        raw = openrouter_response.choices[0].message.content
+    if raw is None:
+        msg_err = "Guardrails completion returned no message content"
+        raise RuntimeError(msg_err)
+    guard_response = GuardrailsResponse.model_validate_json(raw)
+    redirect = guard_response.new_response or ""
+    return guard_response.is_valid, redirect

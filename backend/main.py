@@ -167,10 +167,13 @@ async def _sse_stream(
 
 @app.post("/chat")
 async def chat(request: ChatRequest) -> StreamingResponse:
-    if not request.message.strip():
+    msg = request.message.strip()
+    if not msg:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    proceed, corrected_response = check_prompt_against_guardrails(request.message.strip())
+    save_message(request.session_id, "user", msg)
+
+    proceed, corrected_response = check_prompt_against_guardrails(msg)
 
     async def get_corrected_response_stream(response: str) -> AsyncIterator[str]:
         words = response.split(" ")
@@ -192,7 +195,7 @@ async def chat(request: ChatRequest) -> StreamingResponse:
         )
 
     return StreamingResponse(
-        _sse_stream(request.session_id, request.message, request.known_session_ids),
+        _sse_stream(request.session_id, msg, request.known_session_ids),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
