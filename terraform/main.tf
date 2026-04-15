@@ -23,6 +23,13 @@ locals {
     ManagedBy   = "terraform"
   }
 
+  # Canonical names: keep in sync with deploy.yml reuse/import (NAME_PREFIX = project-environment).
+  lambda_function_name            = "${local.name_prefix}-api"
+  iam_lambda_role_name            = "${local.name_prefix}-lambda"
+  apigateway_http_api_name        = "${local.name_prefix}-http-api"
+  cloudfront_oac_name             = "${local.name_prefix}-frontend-s3-oac"
+  cloudfront_distribution_comment = "${local.name_prefix} persona static"
+
   # When an existing role ARN is provided, resolve it for optional inline policy attachment.
   use_existing_lambda_role = trimspace(var.lambda_execution_role_arn) != ""
   lambda_role_name         = local.use_existing_lambda_role ? regex("^arn:aws:iam::\\d+:role/(.+)$", var.lambda_execution_role_arn)[0] : ""
@@ -116,7 +123,7 @@ locals {
 resource "aws_iam_role" "lambda" {
   count = local.use_existing_lambda_role ? 0 : 1
 
-  name = "${local.name_prefix}-lambda"
+  name = local.iam_lambda_role_name
   tags = local.common_tags
 
   assume_role_policy = jsonencode({
@@ -168,7 +175,7 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
 resource "aws_iam_role_policy" "lambda_dynamodb_existing_role" {
   count = local.use_existing_lambda_role && var.attach_dynamodb_policy_to_existing_role ? 1 : 0
 
-  name = "${local.name_prefix}-persona-ddb"
+  name = "${local.name_prefix}-lambda-ddb-existing"
   role = data.aws_iam_role.lambda_existing[0].name
 
   policy = jsonencode({
@@ -194,7 +201,7 @@ resource "aws_iam_role_policy" "lambda_dynamodb_existing_role" {
 }
 
 resource "aws_lambda_function" "api" {
-  function_name = "${local.name_prefix}-api"
+  function_name = local.lambda_function_name
   role          = local.use_existing_lambda_role ? var.lambda_execution_role_arn : aws_iam_role.lambda[0].arn
   handler       = "lambda_handler.handler"
   runtime       = "python3.12"
@@ -222,7 +229,7 @@ resource "aws_lambda_function" "api" {
 
 # --- HTTP API ---
 resource "aws_apigatewayv2_api" "main" {
-  name          = "${local.name_prefix}-http-api"
+  name          = local.apigateway_http_api_name
   protocol_type = "HTTP"
   tags          = local.common_tags
 
@@ -297,7 +304,7 @@ resource "aws_s3_bucket_public_access_block" "frontend" {
 }
 
 resource "aws_cloudfront_origin_access_control" "frontend" {
-  name                              = "${local.name_prefix}-frontend-s3-oac"
+  name                              = local.cloudfront_oac_name
   description                       = "OAC for private S3 frontend origin (avoids public bucket policies)"
   origin_access_control_origin_type = "s3"
   signing_behavior                  = "always"
@@ -335,7 +342,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   enabled             = true
   is_ipv6_enabled     = true
   default_root_object = "index.html"
-  comment             = "${local.name_prefix} persona static"
+  comment             = local.cloudfront_distribution_comment
   tags                = local.common_tags
 
   origin {

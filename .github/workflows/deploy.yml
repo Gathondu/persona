@@ -3,8 +3,8 @@
 # Secrets: HF_TOKEN; optional HF_USERNAME (defaults to oauth2 in the script).
 # AWS: secrets AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (IAM user); optional OPENROUTER_API_KEY,
 #      CEREBRAS_API_KEY; optional LAMBDA_EXECUTION_ROLE_ARN for TF_VAR_lambda_execution_role_arn.
-#      If a previous apply created tables/bucket/role but state was lost, use workflow input
-#      "Reuse existing AWS resources" so Terraform references them instead of creating.
+#      If a previous apply created resources but state was lost, use workflow input
+#      "Reuse existing AWS resources" (TF_VAR existing_* + import Lambda + CloudFront OAC into state before apply).
 
 name: Deploy
 
@@ -152,6 +152,47 @@ jobs:
             fi
           fi
           terraform init -input=false
+
+          # Adopt resources that already exist in AWS (partial apply / lost state) so apply updates instead of Create.
+          # Naming matches locals in terraform/main.tf: name_prefix = project_name-environment.
+          if [ "${REUSE_EXISTING_AWS_RESOURCES:-}" = "true" ]; then
+            NAME_PREFIX="${TF_VAR_project_name}-${TF_VAR_environment}"
+            import_if_needed() {
+              ADDR="$1"
+              ID="$2"
+              if [ -z "${ID}" ] || [ "${ID}" = "None" ]; then
+                echo "Skipping import ${ADDR} (empty id)"
+                return 0
+              fi
+              if terraform state show "${ADDR}" >/dev/null 2>&1; then
+                echo "State already has ${ADDR}"
+                return 0
+              fi
+              terraform import -input=false "${ADDR}" "${ID}"
+            }
+            import_if_needed aws_lambda_function.api "${NAME_PREFIX}-api"
+            OAC_NAME="${NAME_PREFIX}-frontend-s3-oac"
+            OAC_ID="$(aws cloudfront list-origin-access-controls --output json | jq -r --arg n "${OAC_NAME}" '.OriginAccessControlList.Items // [] | .[] | select(.Name == $n) | .Id' | head -1)"
+            import_if_needed aws_cloudfront_origin_access_control.frontend "${OAC_ID}"
+            API_ID="$(aws apigatewayv2 get-apis --query "Items[?Name=='${NAME_PREFIX}-http-api'].ApiId | [0]" --output text)"
+            if [ -n "${API_ID}" ] && [ "${API_ID}" != "None" ]; then
+              import_if_needed aws_apigatewayv2_api.main "${API_ID}"
+              import_if_needed aws_apigatewayv2_stage.default "${API_ID}/\$default"
+              INT_ID="$(aws apigatewayv2 get-integrations --api-id "${API_ID}" --query "Items[0].IntegrationId" --output text)"
+              if [ -n "${INT_ID}" ] && [ "${INT_ID}" != "None" ]; then
+                import_if_needed aws_apigatewayv2_integration.lambda "${API_ID}/${INT_ID}"
+              fi
+              ROUTE_ID="$(aws apigatewayv2 get-routes --api-id "${API_ID}" --query "Items[0].RouteId" --output text)"
+              if [ -n "${ROUTE_ID}" ] && [ "${ROUTE_ID}" != "None" ]; then
+                import_if_needed aws_apigatewayv2_route.proxy "${API_ID}/${ROUTE_ID}"
+              fi
+            fi
+            import_if_needed aws_lambda_permission.apigw "${NAME_PREFIX}-api/AllowAPIGatewayInvoke"
+            CF_COMMENT="${NAME_PREFIX} persona static"
+            DIST_ID="$(aws cloudfront list-distributions --output json | jq -r --arg c "${CF_COMMENT}" '.DistributionList.Items[]? | select(.Comment == $c) | .Id' | head -1)"
+            import_if_needed aws_cloudfront_distribution.frontend "${DIST_ID}"
+          fi
+
           terraform apply -auto-approve
 
       - name: Terraform outputs

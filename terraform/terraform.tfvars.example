@@ -37,7 +37,23 @@ aws_region     = "us-east-1"
 # existing_dynamodb_profile_memories_table_name = "persona-prod-profile-memories"
 # existing_frontend_s3_bucket_name              = "persona-prod-frontend-488255002567"
 # lambda_execution_role_arn                     = "arn:aws:iam::488255002567:role/persona-prod-lambda"
-# GitHub Actions: enable workflow input "Reuse existing AWS resources" to set these automatically.
+# GitHub Actions: enable workflow input "Reuse existing AWS resources" to set TF_VAR_* above and run
+# terraform import for resources that only have AWS IDs (Lambda, API Gateway, CloudFront, OAC). See deploy.yml.
+#
+# Two patterns (aligned in main.tf locals: name_prefix = project_name-environment):
+#   1) Optional TF_VAR existing_* — skip Create; use data sources (DynamoDB x2, S3 bucket, IAM role via ARN).
+#   2) terraform import — adopt existing managed resources (same names as locals) into state before apply.
+#
+# Manual import examples (replace persona-prod with your name_prefix):
+#   terraform import aws_lambda_function.api persona-prod-api
+#   terraform import aws_cloudfront_origin_access_control.frontend <OAC_ID>
+#   terraform import aws_apigatewayv2_api.main <api-id>
+#   terraform import 'aws_apigatewayv2_stage.default' '<api-id>/$default'
+#   terraform import aws_apigatewayv2_integration.lambda <api-id>/<integration-id>
+#   terraform import aws_apigatewayv2_route.proxy <api-id>/<route-id>
+#   terraform import aws_lambda_permission.apigw persona-prod-api/AllowAPIGatewayInvoke
+#   terraform import aws_cloudfront_distribution.frontend <E... distribution id>
+# OAC id: aws cloudfront list-origin-access-controls --output json | jq -r '.OriginAccessControlList.Items[] | select(.Name=="persona-prod-frontend-s3-oac") | .Id'
 
 # --- LLM keys (sensitive; prefer TF_VAR_* in CI or a local untracked tfvars file) ---
 # cerebras_api_key   = ""
