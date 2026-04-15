@@ -1,5 +1,6 @@
 import DOMPurify from "dompurify";
 import { marked } from "marked";
+import { tick } from "svelte";
 
 export const MAX_CHATS = 3;
 const CHAT_INDEX_KEY = "dng_chat_index_v1";
@@ -58,7 +59,8 @@ export function renderMarkdown(content: string): string {
   return DOMPurify.sanitize(html);
 }
 
-export function scrollToBottom(threadEl: HTMLElement | null): void {
+export async function scrollToBottom(threadEl: HTMLElement | null): Promise<void> {
+  await tick();
   if (threadEl) {
     threadEl.scrollTop = threadEl.scrollHeight;
   }
@@ -78,7 +80,7 @@ export async function sendMessage(args: SendMessageArgs): Promise<void> {
 
   args.messages.push({ role: "user", content: text });
   args.messages.push({ role: "assistant", content: "", streaming: true });
-  scrollToBottom(args.threadEl);
+  await scrollToBottom(args.threadEl);
 
   try {
     const res = await fetch("/chat", {
@@ -117,7 +119,7 @@ export async function sendMessage(args: SendMessageArgs): Promise<void> {
           if (parsed.error) throw new Error(parsed.error);
           if (parsed.token) {
             args.messages[args.messages.length - 1].content += parsed.token;
-            scrollToBottom(args.threadEl);
+            await scrollToBottom(args.threadEl);
           }
         } catch {
           // malformed SSE chunk — skip
@@ -131,7 +133,7 @@ export async function sendMessage(args: SendMessageArgs): Promise<void> {
   } finally {
     args.messages[args.messages.length - 1].streaming = false;
     args.setIsStreaming(false);
-    scrollToBottom(args.threadEl);
+    await scrollToBottom(args.threadEl);
     if (args.onAssistantComplete) {
       await args.onAssistantComplete();
     }

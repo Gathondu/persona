@@ -19,6 +19,7 @@
     saveChatIndex,
     saveSidebarOpen,
     saveThemePreference,
+    scrollToBottom,
     setActiveSessionId,
     subscribePrefersColorScheme,
     touchChat,
@@ -27,6 +28,10 @@
     type Message,
     type ThemePreference,
   } from "./chat-logic";
+
+  async function scrollThreadToBottom(): Promise<void> {
+    await scrollToBottom(threadEl);
+  }
 
   const boot = bootstrapChatState();
   let chats = $state<ChatMeta[]>(boot.chats);
@@ -92,6 +97,7 @@
       const history = await fetchHistory(current);
       messages = history.length > 0 ? history : buildWelcomeMessages();
       await refreshPlaceholder();
+      await scrollThreadToBottom();
     })();
   });
 
@@ -124,6 +130,7 @@
     activeSessionId = outcome.newActiveSessionId;
     input = "";
     messages = buildWelcomeMessages();
+    void scrollThreadToBottom();
   }
 
   async function handleDeleteChat(sessionId: string): Promise<void> {
