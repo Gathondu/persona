@@ -1,8 +1,8 @@
 # Conditional deploy: Hugging Face Space (git push) or AWS (Terraform + S3).
 # Repository variables: HF_SPACE (e.g. my-org/persona) for Hugging Face.
 # Secrets: HF_TOKEN; optional HF_USERNAME (defaults to oauth2 in the script).
-# AWS: secrets AWS_ROLE_ARN (OIDC); optional OPENROUTER_API_KEY, CEREBRAS_API_KEY;
-#      optional LAMBDA_EXECUTION_ROLE_ARN for TF_VAR_lambda_execution_role_arn.
+# AWS: secrets AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (IAM user); optional OPENROUTER_API_KEY,
+#      CEREBRAS_API_KEY; optional LAMBDA_EXECUTION_ROLE_ARN for TF_VAR_lambda_execution_role_arn.
 
 name: Deploy
 
@@ -78,7 +78,6 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'aws'
     runs-on: ubuntu-latest
     permissions:
-      id-token: write
       contents: read
 
     env:
@@ -93,20 +92,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Require AWS_ROLE_ARN
+      - name: Require AWS access key secrets
         env:
-          AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         run: |
-          if [ -z "$AWS_ROLE_ARN" ]; then
-            echo "Add repository secret AWS_ROLE_ARN (IAM role ARN trusted for GitHub OIDC)."
+          if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
+            echo "Add repository secrets AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (IAM user for Terraform and aws CLI)."
             exit 1
           fi
 
-      - name: Configure AWS credentials (OIDC)
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          role-session-name: github-actions-persona-deploy
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Set up Python
