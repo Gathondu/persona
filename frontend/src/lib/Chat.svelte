@@ -3,7 +3,7 @@
   import {
     applyDocumentTheme,
     bootstrapChatState,
-    buildWelcomeMessages,
+    mergeWelcomeWithHistory,
     createSubmitMessage,
     DEFAULT_INPUT_PLACEHOLDER,
     fetchHistory,
@@ -37,7 +37,7 @@
   let chats = $state<ChatMeta[]>(boot.chats);
   let activeSessionId = $state(boot.activeSessionId);
 
-  let messages = $state<Message[]>(buildWelcomeMessages());
+  let messages = $state<Message[]>(mergeWelcomeWithHistory([]));
   let input = $state("");
   let isStreaming = $state(false);
   let threadEl = $state<HTMLElement | null>(null);
@@ -95,7 +95,7 @@
     setActiveSessionId(current);
     void (async () => {
       const history = await fetchHistory(current);
-      messages = history.length > 0 ? history : buildWelcomeMessages();
+      messages = mergeWelcomeWithHistory(history);
       await refreshPlaceholder();
       await scrollThreadToBottom();
     })();
@@ -129,7 +129,7 @@
     chats = outcome.chats;
     activeSessionId = outcome.newActiveSessionId;
     input = "";
-    messages = buildWelcomeMessages();
+    messages = mergeWelcomeWithHistory([]);
     void scrollThreadToBottom();
   }
 

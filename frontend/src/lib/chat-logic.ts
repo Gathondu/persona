@@ -414,6 +414,11 @@ export function buildWelcomeMessages(): Message[] {
   return [{ role: "assistant", content: WELCOME_CONTENT }];
 }
 
+/** Server history omits the welcome; prepend it for display so reload/switch keeps the greeting. */
+export function mergeWelcomeWithHistory(history: Message[]): Message[] {
+  return [...buildWelcomeMessages(), ...history];
+}
+
 export const DEFAULT_INPUT_PLACEHOLDER =
   "Share a quick note about your role or hiring need...";
 
