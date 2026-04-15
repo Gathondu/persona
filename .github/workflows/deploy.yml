@@ -38,7 +38,7 @@ on:
         default: persona
         type: string
       reuse_existing_aws_resources:
-        description: "AWS only — set if DynamoDB/S3/Lambda IAM already exist with standard names (avoid ResourceInUse / AlreadyExists)"
+        description: "AWS only — set if DynamoDB/S3/Lambda IAM already exist with standard names"
         required: false
         default: false
         type: boolean
