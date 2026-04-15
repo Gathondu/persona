@@ -3,9 +3,11 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
+from typing import Any, cast
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -13,6 +15,8 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from openai.types.chat import ChatCompletionMessageParam
 from pydantic import BaseModel, Field
+from starlette.middleware import Middleware, _MiddlewareFactory
+from starlette.middleware.cors import CORSMiddleware
 
 from agent import (
     PLACEHOLDER_FALLBACK,
@@ -47,7 +51,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="DNG", lifespan=lifespan)
+_cors_origins = os.getenv("CORS_ORIGINS", "").strip()
+_starlette_middleware: list[Middleware] = []
+if _cors_origins:
+    _starlette_middleware.append(
+        Middleware(
+            cast(_MiddlewareFactory[Any], CORSMiddleware),
+            allow_origins=[o.strip() for o in _cors_origins.split(",") if o.strip()],
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        ),
+    )
+
+app = FastAPI(title="DNG", lifespan=lifespan, middleware=_starlette_middleware)
 
 
 class ChatRequest(BaseModel):
@@ -171,12 +188,8 @@ async def chat(request: ChatRequest) -> StreamingResponse:
     if not msg:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
-    guardrail_history = get_history(
-        request.session_id, limit=GUARDRAIL_HISTORY_MAX_MESSAGES
-    )
-    proceed, corrected_response = check_prompt_against_guardrails(
-        msg, guardrail_history
-    )
+    guardrail_history = get_history(request.session_id, limit=GUARDRAIL_HISTORY_MAX_MESSAGES)
+    proceed, corrected_response = check_prompt_against_guardrails(msg, guardrail_history)
 
     async def get_corrected_response_stream(response: str) -> AsyncIterator[str]:
         words = response.split(" ")
@@ -246,8 +259,11 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-if STATIC_DIR.exists():
+_serve_static = os.getenv("SERVE_STATIC", "true").lower() in ("1", "true", "yes")
+if _serve_static and STATIC_DIR.exists():
     app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
+elif not _serve_static:
+    logger.info("SERVE_STATIC disabled; running API only (use CloudFront + S3 for UI).")
 else:
     logger.warning(
         "Static directory '%s' not found. Run 'npm run build' in frontend/ first.",

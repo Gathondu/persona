@@ -1,0 +1,30 @@
+# Copy to terraform.tfvars (gitignored) and adjust:
+#   copy terraform.tfvars.example terraform.tfvars
+# Or pass values via: terraform apply -var="key=value" and/or TF_VAR_* env vars.
+
+# --- Required-ish (no defaults in all cases) ---
+project_name = "persona"
+environment  = "dev" # dev | test | prod
+aws_region     = "us-east-1"
+
+# --- Lambda package (default matches repo layout after package_lambda.py) ---
+# lambda_zip_path = "../backend/lambda-deployment.zip"
+
+# --- Lambda sizing ---
+# lambda_timeout       = 120
+# lambda_memory_size   = 512
+
+# --- API Gateway throttling ---
+# api_throttle_burst_limit = 100
+# api_throttle_rate_limit  = 50
+
+# --- Optional: use an existing IAM role instead of Terraform-created role ---
+# lambda_execution_role_arn = "arn:aws:iam::123456789012:role/your-lambda-role"
+# attach_dynamodb_policy_to_existing_role = true # set false if the role already has DynamoDB access
+
+# --- LLM keys (sensitive; prefer TF_VAR_* in CI or a local untracked tfvars file) ---
+# cerebras_api_key   = ""
+# openrouter_api_key = ""
+
+# openrouter_base_url = "https://openrouter.ai/api/v1"
+# app_url             = "https://your-cloudfront-or-api-url.example"

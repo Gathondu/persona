@@ -2,6 +2,7 @@
 .env
 .env.*
 !.env.example
+!backend/.env.example
 
 # Python
 __pycache__/
@@ -19,6 +20,10 @@ node_modules/
 
 # Build output (generated — do not commit)
 backend/static/
+frontend/dist-static/
+
+# Lambda build staging
+backend/lambda_staging/
 
 # OS
 .DS_Store
@@ -28,3 +33,15 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+terraform.tfstate.d/
+*.tfvars
+
+# Lambda packages
+lambda-deployment.zip
+lambda-package/

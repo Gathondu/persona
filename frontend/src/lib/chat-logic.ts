@@ -2,6 +2,19 @@ import DOMPurify from "dompurify";
 import { marked } from "marked";
 import { tick } from "svelte";
 
+/** Base URL for API (empty = same origin). Set at build time via `VITE_API_BASE_URL`. */
+function apiBase(): string {
+  const raw = import.meta.env.VITE_API_BASE_URL?.trim() ?? "";
+  return raw.replace(/\/$/, "");
+}
+
+/** Absolute or same-origin path for API calls (S3 static + API Gateway). */
+export function apiUrl(path: string): string {
+  const base = apiBase();
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return base ? `${base}${p}` : p;
+}
+
 export const MAX_CHATS = 3;
 const CHAT_INDEX_KEY = "dng_chat_index_v1";
 const ACTIVE_CHAT_KEY = "dng_active_chat_v1";
@@ -83,7 +96,7 @@ export async function sendMessage(args: SendMessageArgs): Promise<void> {
   await scrollToBottom(args.threadEl);
 
   try {
-    const res = await fetch("/chat", {
+    const res = await fetch(apiUrl("/chat"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -163,7 +176,7 @@ export async function fetchSuggestedPlaceholder(
   fallback: string,
 ): Promise<string> {
   try {
-    const response = await fetch("/placeholder", {
+    const response = await fetch(apiUrl("/placeholder"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ session_id: sessionId }),
@@ -296,7 +309,7 @@ export function getKnownSessionIds(chats: ChatMeta[], activeSessionId: string): 
 
 export async function fetchHistory(sessionId: string): Promise<Message[]> {
   try {
-    const response = await fetch(`/history/${sessionId}`);
+    const response = await fetch(apiUrl(`/history/${sessionId}`));
     if (!response.ok) {
       return [];
     }
@@ -318,7 +331,7 @@ export async function fetchHistory(sessionId: string): Promise<Message[]> {
 
 export async function deleteSessionOnServer(sessionId: string): Promise<boolean> {
   try {
-    const response = await fetch(`/sessions/${sessionId}`, { method: "DELETE" });
+    const response = await fetch(apiUrl(`/sessions/${sessionId}`), { method: "DELETE" });
     return response.ok;
   } catch {
     return false;

@@ -1,10 +1,12 @@
+"""SQLite persistence for local development."""
+
 from __future__ import annotations
 
 import json
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path(__file__).parent / "chat_history.db"
+DB_PATH = Path(__file__).resolve().parent.parent / "chat_history.db"
 
 
 def _get_conn() -> sqlite3.Connection:
@@ -37,8 +39,8 @@ def init_db() -> None:
                 source_session_id TEXT NOT NULL,
                 text            TEXT NOT NULL,
                 embedding_json  TEXT NOT NULL,
-                created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
-                updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 UNIQUE(session_id, text)
             )
             """
