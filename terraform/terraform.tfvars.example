@@ -29,6 +29,16 @@ aws_region     = "us-east-1"
 # Terraform still manages the bucket policy (CloudFront OAC) and public access block when using an existing bucket.
 # existing_frontend_s3_bucket_name              = "my-project-dev-frontend-123456789012"
 
+# --- Recovery: tables/bucket/IAM already exist (e.g. partial apply or empty state) ---
+# Standard names match main.tf: {project}-{env}-messages, {project}-{env}-profile-memories,
+# {project}-{env}-frontend-{account_id}, role {project}-{env}-lambda.
+# Example for project_name=persona, environment=prod, account 488255002567:
+# existing_dynamodb_messages_table_name         = "persona-prod-messages"
+# existing_dynamodb_profile_memories_table_name = "persona-prod-profile-memories"
+# existing_frontend_s3_bucket_name              = "persona-prod-frontend-488255002567"
+# lambda_execution_role_arn                     = "arn:aws:iam::488255002567:role/persona-prod-lambda"
+# GitHub Actions: enable workflow input "Reuse existing AWS resources" to set these automatically.
+
 # --- LLM keys (sensitive; prefer TF_VAR_* in CI or a local untracked tfvars file) ---
 # cerebras_api_key   = ""
 # openrouter_api_key = ""

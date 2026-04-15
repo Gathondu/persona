@@ -3,6 +3,8 @@
 # Secrets: HF_TOKEN; optional HF_USERNAME (defaults to oauth2 in the script).
 # AWS: secrets AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (IAM user); optional OPENROUTER_API_KEY,
 #      CEREBRAS_API_KEY; optional LAMBDA_EXECUTION_ROLE_ARN for TF_VAR_lambda_execution_role_arn.
+#      If a previous apply created tables/bucket/role but state was lost, use workflow input
+#      "Reuse existing AWS resources" so Terraform references them instead of creating.
 
 name: Deploy
 
@@ -35,6 +37,11 @@ on:
         required: false
         default: persona
         type: string
+      reuse_existing_aws_resources:
+        description: "AWS only — set if DynamoDB/S3/Lambda IAM already exist with standard names (avoid ResourceInUse / AlreadyExists)"
+        required: false
+        default: false
+        type: boolean
   push:
     branches:
       - main
@@ -130,7 +137,20 @@ jobs:
 
       - name: Terraform apply
         working-directory: terraform
+        env:
+          # workflow_dispatch boolean inputs are the strings "true" / "false"
+          REUSE_EXISTING_AWS_RESOURCES: ${{ github.event.inputs.reuse_existing_aws_resources }}
         run: |
+          set -euo pipefail
+          if [ "${REUSE_EXISTING_AWS_RESOURCES:-}" = "true" ]; then
+            ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+            export TF_VAR_existing_dynamodb_messages_table_name="${TF_VAR_project_name}-${TF_VAR_environment}-messages"
+            export TF_VAR_existing_dynamodb_profile_memories_table_name="${TF_VAR_project_name}-${TF_VAR_environment}-profile-memories"
+            export TF_VAR_existing_frontend_s3_bucket_name="${TF_VAR_project_name}-${TF_VAR_environment}-frontend-${ACCOUNT_ID}"
+            if [ -z "${TF_VAR_lambda_execution_role_arn:-}" ]; then
+              export TF_VAR_lambda_execution_role_arn="arn:aws:iam::${ACCOUNT_ID}:role/${TF_VAR_project_name}-${TF_VAR_environment}-lambda"
+            fi
+          fi
           terraform init -input=false
           terraform apply -auto-approve
 
