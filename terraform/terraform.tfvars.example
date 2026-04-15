@@ -61,3 +61,5 @@ aws_region     = "us-east-1"
 
 # openrouter_base_url = "https://openrouter.ai/api/v1"
 # app_url             = "https://your-cloudfront-or-api-url.example"
+# Optional: extra origins (comma-separated). If unset, CORS_ORIGINS on Lambda defaults to the Terraform CloudFront URL (required for browser → API).
+# cors_origins        = "https://d123.cloudfront.net,http://localhost:5173"

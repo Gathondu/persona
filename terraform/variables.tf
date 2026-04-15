@@ -135,3 +135,9 @@ variable "app_url" {
   type        = string
   default     = "https://localhost"
 }
+
+variable "cors_origins" {
+  description = "Comma-separated browser origins for FastAPI CORS (e.g. https://d123.cloudfront.net). When empty, defaults to the Terraform-managed CloudFront distribution URL."
+  type        = string
+  default     = ""
+}

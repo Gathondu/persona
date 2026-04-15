@@ -37,6 +37,9 @@ locals {
   use_existing_messages_table         = trimspace(var.existing_dynamodb_messages_table_name) != ""
   use_existing_profile_memories_table = trimspace(var.existing_dynamodb_profile_memories_table_name) != ""
   use_existing_frontend_s3_bucket     = trimspace(var.existing_frontend_s3_bucket_name) != ""
+
+  # Browser origin(s) allowed by FastAPI CORS. Required for API Gateway → Lambda proxy: OPTIONS must return 2xx with CORS headers.
+  cors_origins_effective = trimspace(var.cors_origins) != "" ? trimspace(var.cors_origins) : "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
 data "aws_iam_role" "lambda_existing" {
@@ -221,6 +224,7 @@ resource "aws_lambda_function" "api" {
       OPENROUTER_API_KEY      = var.openrouter_api_key
       OPENROUTER_BASE_URL     = var.openrouter_base_url
       APP_URL                 = var.app_url
+      CORS_ORIGINS            = local.cors_origins_effective
     }
   }
 
