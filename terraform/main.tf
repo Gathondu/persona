@@ -27,9 +27,9 @@ locals {
   use_existing_lambda_role = trimspace(var.lambda_execution_role_arn) != ""
   lambda_role_name         = local.use_existing_lambda_role ? regex("^arn:aws:iam::\\d+:role/(.+)$", var.lambda_execution_role_arn)[0] : ""
 
-  use_existing_messages_table           = trimspace(var.existing_dynamodb_messages_table_name) != ""
-  use_existing_profile_memories_table   = trimspace(var.existing_dynamodb_profile_memories_table_name) != ""
-  use_existing_frontend_s3_bucket       = trimspace(var.existing_frontend_s3_bucket_name) != ""
+  use_existing_messages_table         = trimspace(var.existing_dynamodb_messages_table_name) != ""
+  use_existing_profile_memories_table = trimspace(var.existing_dynamodb_profile_memories_table_name) != ""
+  use_existing_frontend_s3_bucket     = trimspace(var.existing_frontend_s3_bucket_name) != ""
 }
 
 data "aws_iam_role" "lambda_existing" {
@@ -106,10 +106,10 @@ data "aws_dynamodb_table" "profile_memories_existing" {
 
 locals {
   messages_table_name = local.use_existing_messages_table ? data.aws_dynamodb_table.messages_existing[0].name : aws_dynamodb_table.messages[0].name
-  messages_table_arn    = local.use_existing_messages_table ? data.aws_dynamodb_table.messages_existing[0].arn : aws_dynamodb_table.messages[0].arn
+  messages_table_arn  = local.use_existing_messages_table ? data.aws_dynamodb_table.messages_existing[0].arn : aws_dynamodb_table.messages[0].arn
 
   profile_memories_table_name = local.use_existing_profile_memories_table ? data.aws_dynamodb_table.profile_memories_existing[0].name : aws_dynamodb_table.profile_memories[0].name
-  profile_memories_table_arn    = local.use_existing_profile_memories_table ? data.aws_dynamodb_table.profile_memories_existing[0].arn : aws_dynamodb_table.profile_memories[0].arn
+  profile_memories_table_arn  = local.use_existing_profile_memories_table ? data.aws_dynamodb_table.profile_memories_existing[0].arn : aws_dynamodb_table.profile_memories[0].arn
 }
 
 # --- Lambda IAM (only when lambda_execution_role_arn is not set) ---
@@ -315,7 +315,7 @@ resource "aws_s3_bucket_policy" "frontend" {
       Principal = {
         Service = "cloudfront.amazonaws.com"
       }
-      Action = "s3:GetObject"
+      Action   = "s3:GetObject"
       Resource = "${local.frontend_bucket_arn}/*"
       Condition = {
         StringEquals = {
