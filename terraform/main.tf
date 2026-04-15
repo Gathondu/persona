@@ -1,5 +1,20 @@
 data "aws_caller_identity" "current" {}
 
+moved {
+  from = aws_dynamodb_table.messages
+  to   = aws_dynamodb_table.messages[0]
+}
+
+moved {
+  from = aws_dynamodb_table.profile_memories
+  to   = aws_dynamodb_table.profile_memories[0]
+}
+
+moved {
+  from = aws_s3_bucket.frontend
+  to   = aws_s3_bucket.frontend[0]
+}
+
 locals {
   name_prefix = "${var.project_name}-${var.environment}"
   common_tags = {
@@ -11,6 +26,10 @@ locals {
   # When an existing role ARN is provided, resolve it for optional inline policy attachment.
   use_existing_lambda_role = trimspace(var.lambda_execution_role_arn) != ""
   lambda_role_name         = local.use_existing_lambda_role ? regex("^arn:aws:iam::\\d+:role/(.+)$", var.lambda_execution_role_arn)[0] : ""
+
+  use_existing_messages_table           = trimspace(var.existing_dynamodb_messages_table_name) != ""
+  use_existing_profile_memories_table   = trimspace(var.existing_dynamodb_profile_memories_table_name) != ""
+  use_existing_frontend_s3_bucket       = trimspace(var.existing_frontend_s3_bucket_name) != ""
 }
 
 data "aws_iam_role" "lambda_existing" {
@@ -20,6 +39,8 @@ data "aws_iam_role" "lambda_existing" {
 
 # --- DynamoDB: chat messages ---
 resource "aws_dynamodb_table" "messages" {
+  count = local.use_existing_messages_table ? 0 : 1
+
   name         = "${local.name_prefix}-messages"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "session_id"
@@ -37,8 +58,15 @@ resource "aws_dynamodb_table" "messages" {
   tags = local.common_tags
 }
 
+data "aws_dynamodb_table" "messages_existing" {
+  count = local.use_existing_messages_table ? 1 : 0
+  name  = var.existing_dynamodb_messages_table_name
+}
+
 # --- DynamoDB: profile memories + GSI for delete by source session ---
 resource "aws_dynamodb_table" "profile_memories" {
+  count = local.use_existing_profile_memories_table ? 0 : 1
+
   name         = "${local.name_prefix}-profile-memories"
   billing_mode = "PAY_PER_REQUEST"
   hash_key     = "session_id"
@@ -69,6 +97,19 @@ resource "aws_dynamodb_table" "profile_memories" {
   }
 
   tags = local.common_tags
+}
+
+data "aws_dynamodb_table" "profile_memories_existing" {
+  count = local.use_existing_profile_memories_table ? 1 : 0
+  name  = var.existing_dynamodb_profile_memories_table_name
+}
+
+locals {
+  messages_table_name = local.use_existing_messages_table ? data.aws_dynamodb_table.messages_existing[0].name : aws_dynamodb_table.messages[0].name
+  messages_table_arn    = local.use_existing_messages_table ? data.aws_dynamodb_table.messages_existing[0].arn : aws_dynamodb_table.messages[0].arn
+
+  profile_memories_table_name = local.use_existing_profile_memories_table ? data.aws_dynamodb_table.profile_memories_existing[0].name : aws_dynamodb_table.profile_memories[0].name
+  profile_memories_table_arn    = local.use_existing_profile_memories_table ? data.aws_dynamodb_table.profile_memories_existing[0].arn : aws_dynamodb_table.profile_memories[0].arn
 }
 
 # --- Lambda IAM (only when lambda_execution_role_arn is not set) ---
@@ -114,10 +155,10 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
         "dynamodb:DescribeTable",
       ]
       Resource = [
-        aws_dynamodb_table.messages.arn,
-        "${aws_dynamodb_table.messages.arn}/index/*",
-        aws_dynamodb_table.profile_memories.arn,
-        "${aws_dynamodb_table.profile_memories.arn}/index/*",
+        local.messages_table_arn,
+        "${local.messages_table_arn}/index/*",
+        local.profile_memories_table_arn,
+        "${local.profile_memories_table_arn}/index/*",
       ]
     }]
   })
@@ -143,10 +184,10 @@ resource "aws_iam_role_policy" "lambda_dynamodb_existing_role" {
         "dynamodb:DescribeTable",
       ]
       Resource = [
-        aws_dynamodb_table.messages.arn,
-        "${aws_dynamodb_table.messages.arn}/index/*",
-        aws_dynamodb_table.profile_memories.arn,
-        "${aws_dynamodb_table.profile_memories.arn}/index/*",
+        local.messages_table_arn,
+        "${local.messages_table_arn}/index/*",
+        local.profile_memories_table_arn,
+        "${local.profile_memories_table_arn}/index/*",
       ]
     }]
   })
@@ -166,8 +207,8 @@ resource "aws_lambda_function" "api" {
   environment {
     variables = {
       MEMORY_BACKEND          = "dynamodb"
-      DYNAMODB_MESSAGES_TABLE = aws_dynamodb_table.messages.name
-      DYNAMODB_PROFILE_TABLE  = aws_dynamodb_table.profile_memories.name
+      DYNAMODB_MESSAGES_TABLE = local.messages_table_name
+      DYNAMODB_PROFILE_TABLE  = local.profile_memories_table_name
       SERVE_STATIC            = "false"
       CEREBRAS_API_KEY        = var.cerebras_api_key
       OPENROUTER_API_KEY      = var.openrouter_api_key
@@ -229,12 +270,25 @@ resource "aws_lambda_permission" "apigw" {
 
 # --- S3 static frontend ---
 resource "aws_s3_bucket" "frontend" {
+  count = local.use_existing_frontend_s3_bucket ? 0 : 1
+
   bucket = "${local.name_prefix}-frontend-${data.aws_caller_identity.current.account_id}"
   tags   = local.common_tags
 }
 
+data "aws_s3_bucket" "frontend_existing" {
+  count  = local.use_existing_frontend_s3_bucket ? 1 : 0
+  bucket = var.existing_frontend_s3_bucket_name
+}
+
+locals {
+  frontend_bucket_id                   = local.use_existing_frontend_s3_bucket ? data.aws_s3_bucket.frontend_existing[0].id : aws_s3_bucket.frontend[0].id
+  frontend_bucket_arn                  = local.use_existing_frontend_s3_bucket ? data.aws_s3_bucket.frontend_existing[0].arn : aws_s3_bucket.frontend[0].arn
+  frontend_bucket_regional_domain_name = local.use_existing_frontend_s3_bucket ? data.aws_s3_bucket.frontend_existing[0].bucket_regional_domain_name : aws_s3_bucket.frontend[0].bucket_regional_domain_name
+}
+
 resource "aws_s3_bucket_public_access_block" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
+  bucket = local.frontend_bucket_id
 
   block_public_acls       = true
   block_public_policy     = true
@@ -251,7 +305,7 @@ resource "aws_cloudfront_origin_access_control" "frontend" {
 }
 
 resource "aws_s3_bucket_policy" "frontend" {
-  bucket = aws_s3_bucket.frontend.id
+  bucket = local.frontend_bucket_id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -262,7 +316,7 @@ resource "aws_s3_bucket_policy" "frontend" {
         Service = "cloudfront.amazonaws.com"
       }
       Action = "s3:GetObject"
-      Resource = "${aws_s3_bucket.frontend.arn}/*"
+      Resource = "${local.frontend_bucket_arn}/*"
       Condition = {
         StringEquals = {
           "AWS:SourceArn" = aws_cloudfront_distribution.frontend.arn
@@ -285,7 +339,7 @@ resource "aws_cloudfront_distribution" "frontend" {
   tags                = local.common_tags
 
   origin {
-    domain_name              = aws_s3_bucket.frontend.bucket_regional_domain_name
+    domain_name              = local.frontend_bucket_regional_domain_name
     origin_id                = "s3-frontend"
     origin_access_control_id = aws_cloudfront_origin_access_control.frontend.id
   }

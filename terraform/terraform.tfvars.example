@@ -22,6 +22,13 @@ aws_region     = "us-east-1"
 # lambda_execution_role_arn = "arn:aws:iam::123456789012:role/your-lambda-role"
 # attach_dynamodb_policy_to_existing_role = true # set false if the role already has DynamoDB access
 
+# --- Optional: use existing DynamoDB / S3 (leave unset to create and manage them) ---
+# Existing tables must match this stack's schema (keys, attributes, GSI BySourceSession on profile table) or the API will fail at runtime.
+# existing_dynamodb_messages_table_name         = "my-project-dev-messages"
+# existing_dynamodb_profile_memories_table_name = "my-project-dev-profile-memories"
+# Terraform still manages the bucket policy (CloudFront OAC) and public access block when using an existing bucket.
+# existing_frontend_s3_bucket_name              = "my-project-dev-frontend-123456789012"
+
 # --- LLM keys (sensitive; prefer TF_VAR_* in CI or a local untracked tfvars file) ---
 # cerebras_api_key   = ""
 # openrouter_api_key = ""

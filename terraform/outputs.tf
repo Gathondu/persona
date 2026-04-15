@@ -10,15 +10,15 @@ output "cloudfront_url" {
 
 output "s3_frontend_bucket" {
   description = "S3 bucket for static assets"
-  value       = aws_s3_bucket.frontend.id
+  value       = local.frontend_bucket_id
 }
 
 output "dynamodb_messages_table" {
-  value = aws_dynamodb_table.messages.name
+  value = local.messages_table_name
 }
 
 output "dynamodb_profile_table" {
-  value = aws_dynamodb_table.profile_memories.name
+  value = local.profile_memories_table_name
 }
 
 output "lambda_function_name" {

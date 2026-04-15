@@ -68,6 +68,48 @@ variable "attach_dynamodb_policy_to_existing_role" {
   default     = true
 }
 
+variable "existing_dynamodb_messages_table_name" {
+  description = <<-EOT
+    When set, Terraform does not create the messages table; it uses this existing table name.
+    The table schema must match what this stack expects (keys and attributes as in main.tf).
+    Leave empty to create and manage the table (default).
+  EOT
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.existing_dynamodb_messages_table_name == "" || can(regex("^[a-zA-Z0-9_.-]{3,255}$", var.existing_dynamodb_messages_table_name))
+    error_message = "When set, must be a valid DynamoDB table name (3-255 chars: letters, numbers, . _ -)."
+  }
+}
+
+variable "existing_dynamodb_profile_memories_table_name" {
+  description = <<-EOT
+    When set, Terraform does not create the profile-memories table; it uses this existing table name.
+    The table schema must match what this stack expects (keys, GSI BySourceSession, etc.).
+    Leave empty to create and manage the table (default).
+  EOT
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.existing_dynamodb_profile_memories_table_name == "" || can(regex("^[a-zA-Z0-9_.-]{3,255}$", var.existing_dynamodb_profile_memories_table_name))
+    error_message = "When set, must be a valid DynamoDB table name (3-255 chars: letters, numbers, . _ -)."
+  }
+}
+
+variable "existing_frontend_s3_bucket_name" {
+  description = <<-EOT
+    When set, Terraform does not create the frontend S3 bucket; it uses this existing bucket.
+    Terraform still manages the bucket public access block and bucket policy for CloudFront OAC.
+    Leave empty to create and manage the bucket (default).
+  EOT
+  type        = string
+  default     = ""
+  validation {
+    condition     = var.existing_frontend_s3_bucket_name == "" || can(regex("^[a-z0-9][a-z0-9.-]*[a-z0-9]$", var.existing_frontend_s3_bucket_name)) && length(var.existing_frontend_s3_bucket_name) >= 3 && length(var.existing_frontend_s3_bucket_name) <= 63
+    error_message = "When set, must be a valid S3 bucket name (3-63 chars, DNS-compliant)."
+  }
+}
+
 variable "cerebras_api_key" {
   description = "Cerebras API key (sensitive)"
   type        = string
