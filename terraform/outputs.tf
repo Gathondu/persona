@@ -8,6 +8,11 @@ output "cloudfront_url" {
   value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
+output "cloudfront_distribution_id" {
+  description = "CloudFront distribution ID (for cache invalidation after S3 deploy)"
+  value       = aws_cloudfront_distribution.frontend.id
+}
+
 output "cors_origins_effective" {
   description = "Comma-separated origins passed to Lambda as CORS_ORIGINS (must match browser Origin exactly). Compare with Lambda Configuration → Environment variables in AWS Console after apply."
   value       = local.cors_origins_effective
