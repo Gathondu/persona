@@ -22,6 +22,25 @@ _DEFAULT_OPENROUTER_MODEL = "openai/gpt-5.4-nano"
 GUARDRAIL_HISTORY_MAX_MESSAGES = 24
 
 
+def _require_nonempty_env(var_name: str) -> str:
+    """Return a required env var value, rejecting unset/blank values."""
+    value = os.getenv(var_name, "").strip()
+    if not value:
+        msg = (
+            f"Missing required environment variable: {var_name}. "
+            "Set a non-empty value in runtime configuration."
+        )
+        raise RuntimeError(msg)
+    return value
+
+
+def _openrouter_config() -> tuple[str, str]:
+    """Resolve OpenRouter-compatible credentials and endpoint."""
+    api_key = _require_nonempty_env("OPENROUTER_API_KEY")
+    base_url = _require_nonempty_env("OPENROUTER_BASE_URL")
+    return api_key, base_url
+
+
 def create_cerebras_client() -> AsyncCerebras | None:
     """Return AsyncCerebras when ``CEREBRAS_API_KEY`` is set; otherwise ``None`` (OpenRouter-only)."""
     key = os.getenv("CEREBRAS_API_KEY", "").strip()
@@ -38,9 +57,10 @@ def create_cerebras_client() -> AsyncCerebras | None:
 
 def create_openrouter_client() -> AsyncOpenAI:
     """OpenAI-compatible client pointed at OpenRouter (required for fallback)."""
+    api_key, base_url = _openrouter_config()
     return AsyncOpenAI(
-        api_key=os.environ["OPENROUTER_API_KEY"],
-        base_url=os.environ["OPENROUTER_BASE_URL"],
+        api_key=api_key,
+        base_url=base_url,
         default_headers={
             "HTTP-Referer": os.getenv("APP_URL", "http://localhost:7860"),
             "X-Title": "DNG",
@@ -129,9 +149,10 @@ def check_prompt_against_guardrails(
         cerebras_response = cast(ChatCompletionResponse, cerebras_out)
         raw = cerebras_response.choices[0].message.content
     else:
+        openrouter_api_key, openrouter_base_url = _openrouter_config()
         openrouter_client = OpenAI(
-            api_key=os.environ["OPENROUTER_API_KEY"],
-            base_url=os.environ["OPENROUTER_BASE_URL"],
+            api_key=openrouter_api_key,
+            base_url=openrouter_base_url,
             default_headers=common_headers,
         )
         openrouter_response = openrouter_client.chat.completions.parse(

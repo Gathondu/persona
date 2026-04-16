@@ -92,9 +92,9 @@ jobs:
       TF_VAR_project_name: ${{ github.event.inputs.project_name || 'persona' }}
       TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
       TF_VAR_aws_region: ${{ github.event.inputs.aws_region || 'us-east-1' }}
-      TF_VAR_openrouter_api_key: ${{ secrets.OPENROUTER_API_KEY }}
-      TF_VAR_cerebras_api_key: ${{ secrets.CEREBRAS_API_KEY }}
-      TF_VAR_lambda_execution_role_arn: ${{ secrets.LAMBDA_EXECUTION_ROLE_ARN }}
+      TF_VAR_openrouter_api_key: ${{ secrets['OPENROUTER_API_KEY'] || vars['OPENROUTER_API_KEY'] }}
+      TF_VAR_cerebras_api_key: ${{ secrets['CEREBRAS_API_KEY'] || vars['CEREBRAS_API_KEY'] }}
+      TF_VAR_lambda_execution_role_arn: ${{ secrets['LAMBDA_EXECUTION_ROLE_ARN'] }}
 
     steps:
       - uses: actions/checkout@v4
@@ -106,6 +106,13 @@ jobs:
         run: |
           if [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$AWS_SECRET_ACCESS_KEY" ]; then
             echo "Add repository secrets AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (IAM user for Terraform and aws CLI)."
+            exit 1
+          fi
+
+      - name: Validate LLM credentials
+        run: |
+          if [ -z "${TF_VAR_openrouter_api_key:-}" ] && [ -z "${TF_VAR_cerebras_api_key:-}" ]; then
+            echo "Set OPENROUTER_API_KEY or CEREBRAS_API_KEY as a repository secret or variable."
             exit 1
           fi
 

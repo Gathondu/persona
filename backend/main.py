@@ -189,7 +189,11 @@ async def chat(request: ChatRequest) -> StreamingResponse:
         raise HTTPException(status_code=400, detail="Message cannot be empty.")
 
     guardrail_history = get_history(request.session_id, limit=GUARDRAIL_HISTORY_MAX_MESSAGES)
-    proceed, corrected_response = check_prompt_against_guardrails(msg, guardrail_history)
+    try:
+        proceed, corrected_response = check_prompt_against_guardrails(msg, guardrail_history)
+    except RuntimeError as exc:
+        logger.exception("Guardrail configuration error: %s", exc)
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
 
     async def get_corrected_response_stream(response: str) -> AsyncIterator[str]:
         words = response.split(" ")
