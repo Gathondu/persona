@@ -61,5 +61,13 @@ aws_region     = "us-east-1"
 
 # openrouter_base_url = "https://openrouter.ai/api/v1"
 # app_url             = "https://your-cloudfront-or-api-url.example"
-# Optional: extra origins (comma-separated). If unset, CORS_ORIGINS on Lambda defaults to the Terraform CloudFront URL (required for browser → API).
+#
+# CORS / browser Origin (NOT the API Gateway URL):
+# - VITE_API_BASE_URL at build time = API Gateway base URL (where fetch goes).
+# - cors_origins on Lambda = allowed SPA Origins (where the page is loaded from). If unset, Terraform defaults to
+#   https://<cloudfront-distribution>.cloudfront.net (same as cloudfront_url output).
+# - If you open the app under a custom domain (CloudFront alternate domain), add that origin here, e.g.:
+#   cors_origins = "https://d123.cloudfront.net,https://app.example.com"
+# - To call the deployed API from local Vite dev server, include localhost:
+#   cors_origins = "https://d123.cloudfront.net,http://localhost:5173"
 # cors_origins        = "https://d123.cloudfront.net,http://localhost:5173"

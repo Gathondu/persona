@@ -4,8 +4,13 @@ output "api_gateway_url" {
 }
 
 output "cloudfront_url" {
-  description = "CloudFront URL for static site"
+  description = "CloudFront URL for static site (canonical SPA origin when using the default domain)"
   value       = "https://${aws_cloudfront_distribution.frontend.domain_name}"
+}
+
+output "cors_origins_effective" {
+  description = "Comma-separated origins passed to Lambda as CORS_ORIGINS (must match browser Origin exactly). Compare with Lambda Configuration → Environment variables in AWS Console after apply."
+  value       = local.cors_origins_effective
 }
 
 output "s3_frontend_bucket" {

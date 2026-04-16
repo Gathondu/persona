@@ -38,7 +38,9 @@ locals {
   use_existing_profile_memories_table = trimspace(var.existing_dynamodb_profile_memories_table_name) != ""
   use_existing_frontend_s3_bucket     = trimspace(var.existing_frontend_s3_bucket_name) != ""
 
-  # Browser origin(s) allowed by FastAPI CORS. Required for API Gateway → Lambda proxy: OPTIONS must return 2xx with CORS headers.
+  # SPA / browser Origin(s) allowlisted for FastAPI CORS (Lambda env CORS_ORIGINS). This is NOT api_gateway_url:
+  # the browser sends Origin = the page URL (CloudFront or a custom domain); Access-Control-Allow-Origin must match that.
+  # With AWS_PROXY, OPTIONS preflights hit Lambda unless API-only CORS handles them—CORSMiddleware must be enabled here.
   cors_origins_effective = trimspace(var.cors_origins) != "" ? trimspace(var.cors_origins) : "https://${aws_cloudfront_distribution.frontend.domain_name}"
 }
 
