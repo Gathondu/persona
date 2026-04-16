@@ -1,10 +1,4 @@
-# Conditional deploy: Hugging Face Space (git push) or AWS (Terraform + S3).
-# Repository variables: HF_SPACE (e.g. my-org/persona) for Hugging Face.
-# Secrets: HF_TOKEN; optional HF_USERNAME (defaults to oauth2 in the script).
-# AWS: secrets AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY (IAM user); optional OPENROUTER_API_KEY,
-#      CEREBRAS_API_KEY; optional LAMBDA_EXECUTION_ROLE_ARN for TF_VAR_lambda_execution_role_arn.
-#      If a previous apply created resources but state was lost, use workflow input
-#      "Reuse existing AWS resources" (TF_VAR existing_* + import Lambda + CloudFront OAC into state before apply).
+# Conditional deploy: Hugging Face Space (git push) or AWS (Terraform + S3)
 
 name: Deploy
 
@@ -74,7 +68,7 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
           HF_SPACE: ${{ vars.HF_SPACE }}
-          HF_USERNAME: ${{ secrets.HF_USERNAME }}
+          HF_USERNAME: ${{ vars.HF_USERNAME }}
         run: |
           set -euo pipefail
           HF_USER="${HF_USERNAME:-oauth2}"
@@ -92,8 +86,10 @@ jobs:
       TF_VAR_project_name: ${{ github.event.inputs.project_name || 'persona' }}
       TF_VAR_environment: ${{ github.event.inputs.environment || 'dev' }}
       TF_VAR_aws_region: ${{ github.event.inputs.aws_region || 'us-east-1' }}
-      TF_VAR_openrouter_api_key: ${{ secrets['OPENROUTER_API_KEY'] || vars['OPENROUTER_API_KEY'] }}
-      TF_VAR_cerebras_api_key: ${{ secrets['CEREBRAS_API_KEY'] || vars['CEREBRAS_API_KEY'] }}
+      TF_VAR_openrouter_api_key: ${{ secrets['OPENROUTER_API_KEY'] }}
+      TF_VAR_openrouter_base_url: ${{ vars['OPENROUTER_BASE_URL'] || 'https://openrouter.ai/api/v1' }}
+      TF_VAR_openrouter_model: ${{ vars['OPENROUTER_MODEL'] || 'openai/gpt-5.4-nano' }}
+      TF_VAR_cerebras_api_key: ${{ secrets['CEREBRAS_API_KEY'] }}
       TF_VAR_lambda_execution_role_arn: ${{ secrets['LAMBDA_EXECUTION_ROLE_ARN'] }}
 
     steps:

@@ -60,6 +60,7 @@ aws_region     = "us-east-1"
 # openrouter_api_key = ""
 
 # openrouter_base_url = "https://openrouter.ai/api/v1"
+# openrouter_model    = "openai/gpt-5.4-nano"
 # app_url             = "https://your-cloudfront-or-api-url.example"
 #
 # CORS / browser Origin (NOT the API Gateway URL):

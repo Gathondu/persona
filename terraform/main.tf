@@ -225,6 +225,7 @@ resource "aws_lambda_function" "api" {
       CEREBRAS_API_KEY        = var.cerebras_api_key
       OPENROUTER_API_KEY      = var.openrouter_api_key
       OPENROUTER_BASE_URL     = var.openrouter_base_url
+      OPENROUTER_MODEL        = var.openrouter_model
       APP_URL                 = var.app_url
       CORS_ORIGINS            = local.cors_origins_effective
     }

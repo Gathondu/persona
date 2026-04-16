@@ -130,6 +130,12 @@ variable "openrouter_base_url" {
   default     = "https://openrouter.ai/api/v1"
 }
 
+variable "openrouter_model" {
+  description = "OpenRouter model ID for chat/guardrails"
+  type        = string
+  default     = "openai/gpt-5.4-nano"
+}
+
 variable "app_url" {
   description = "APP_URL for LLM client headers"
   type        = string
